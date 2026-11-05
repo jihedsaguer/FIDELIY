@@ -1,0 +1,28 @@
+{
+  "name": "fideliy",
+  "version": "1.0.0",
+  "description": "A modern loyalty and rewards platform built for Tunisian SMBs, enabling merchants to create stamp cards, issue points, and manage customer rewards through a web dashboard.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "install:all": "npm install && npm install --cwd backend && npm install --cwd frontend",
+    "dev": "npm run dev:backend & npm run dev:frontend",
+    "dev:backend": "npm run start:dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix backend && npm run build --prefix frontend",
+    "test": "npm test --prefix backend"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jihedsaguer/FIDELIY.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jihedsaguer/FIDELIY/issues"
+  },
+  "homepage": "https://github.com/jihedsaguer/FIDELIY#readme"
+}

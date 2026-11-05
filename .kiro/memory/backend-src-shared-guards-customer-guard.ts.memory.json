@@ -1,0 +1,119 @@
+{
+  "file_path": "backend/src/shared/guards/customer.guard.ts",
+  "purpose": "NestJS CanActivate guard verifying authenticated user has customer capability. Checks request.user.id (server-side session only), queries customer_accounts table via TenantContextService with RLS context, returns true if account exists or throws 403 Forbidden. Used as @UseGuards(CustomerGuard) decorator on customer-only endpoints.",
+  "symbols": [
+    {
+      "name": "CustomerGuard",
+      "type": "class",
+      "signature": "@Injectable() class CustomerGuard implements CanActivate"
+    },
+    {
+      "name": "constructor",
+      "type": "method",
+      "signature": "constructor(private tenantContextService: TenantContextService)"
+    },
+    {
+      "name": "canActivate",
+      "type": "method",
+      "signature": "async canActivate(context: ExecutionContext): Promise<boolean>"
+    }
+  ],
+  "source_validity": {
+    "source_fingerprint": "sha256:b78e76f5a883ffee8e742b7208a485eb544a549c79321e36de83c56cfd5d71cf",
+    "last_source_verified": "2026-11-01T14:35:00Z",
+    "git_revision": "abc123def"
+  },
+  "relationship_validity": {
+    "direct_dependencies": [
+      {
+        "target": "@nestjs/common",
+        "symbols": ["Injectable", "CanActivate", "ExecutionContext", "UnauthorizedException", "ForbiddenException"],
+        "dependency_fingerprint": "pkg:@nestjs/common:9.0.0",
+        "last_checked": "2026-11-01T14:35:00Z"
+      },
+      {
+        "target": "express",
+        "symbols": ["Request"],
+        "dependency_fingerprint": "pkg:express:4.18.2",
+        "last_checked": "2026-11-01T14:35:00Z"
+      },
+      {
+        "target": "src/shared/database/tenant-context.service.ts",
+        "symbols": ["TenantContextService", "querySingleWithContext"],
+        "dependency_fingerprint": "sha256:76e322016bf0d51681192be26ebf2cd371e5091f15379f4d78037aba83b01681",
+        "last_checked": "2026-11-01T14:30:00Z"
+      }
+    ],
+    "consumers": [
+      {
+        "source": "src/modules/customers/controllers/profile.controller.ts",
+        "contract": "@UseGuards(CustomerGuard) on getProfile() endpoint",
+        "consumer_fingerprint": "sha256:pending_inspection",
+        "last_checked": null
+      },
+      {
+        "source": "src/modules/loyalty/controllers/balance.controller.ts",
+        "contract": "@UseGuards(CustomerGuard) on getBalance() endpoint",
+        "consumer_fingerprint": "sha256:pending_inspection",
+        "last_checked": null
+      }
+    ],
+    "relationship_status": "depends_on_tenant_context_service"
+  },
+  "invariants": [
+    "Guard executes during request processing, after SessionValidationMiddleware",
+    "userId must originate exclusively from server-side session (request.user.id set by middleware only, never client-supplied)",
+    "Each guard invocation opens a new transaction via TenantContextService.querySingleWithContext()",
+    "RLS context enforced at database level; guard checks customer_accounts table membership",
+    "If customer account exists: attach to request.user.customerAccount, return true",
+    "If customer account missing: throw ForbiddenException (403)",
+    "If database error or unexpected exception: throw UnauthorizedException (401, fail-closed)",
+    "No authentication means request.user.id is undefined; throw UnauthorizedException before database query"
+  ],
+  "tests": {
+    "file": "src/shared/guards/customer.guard.spec.ts",
+    "count": 8,
+    "coverage_percent": 100,
+    "verification_level": "unit_with_mocked_tenant_context_service"
+  },
+  "known_limitations": [
+    "Tests mock TenantContextService; actual RLS enforcement not validated in guard tests (delegated to integration tests)",
+    "Does not validate phone_verified or other customer attributes (only checks account existence)",
+    "Does not implement rate limiting or re-authentication after session expiry (session validation delegated to middleware)",
+    "Guard does not check whether user has merchant capability; customer and merchant are independent"
+  ],
+  "confidence_and_evidence": {
+    "purpose": {
+      "confidence": "high",
+      "evidence": "code_structure + method_contract + usage_comments"
+    },
+    "symbols": {
+      "confidence": "high",
+      "evidence": "ast_extraction + public_class_and_method_signatures"
+    },
+    "invariants": {
+      "confidence": "high",
+      "evidence": "code_flow_inspection + error_handling_structure + test_assertions"
+    },
+    "tests": {
+      "confidence": "high",
+      "evidence": "test_file_inspection + test_run_output"
+    },
+    "relationship_validity": {
+      "confidence": "medium",
+      "evidence": "tenant_context_dependency_clear + consumer_usage_pending_inspection"
+    }
+  },
+  "caveats": [
+    "TESTED_WITH: Jest unit tests mocking TenantContextService; mocked return value controls test behavior",
+    "NOT_TESTED_WITH: Actual TenantContextService with real PostgreSQL queries (integration responsibility)",
+    "NOT_TESTED_WITH: Actual request.user payload from Better Auth session (session validation middleware responsibility)",
+    "ASSUMPTION: ExecutionContext.switchToHttp().getRequest() returns Express Request with user property (NestJS framework contract)",
+    "ASSUMPTION: TenantContextService throws ForbiddenException if account not found (contract from service; guard does not catch ForbiddenException)"
+  ],
+  "last_full_inspection": {
+    "timestamp": "2026-11-01T14:35:00Z",
+    "method": "source_code_read_for_milestone_a_pilot",
+    "inspector": "frm_pilot_inspection"
+  }
+}
