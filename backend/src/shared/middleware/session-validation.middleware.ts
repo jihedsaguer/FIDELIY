@@ -1,7 +1,7 @@
 import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import { AuthService } from '../../modules/auth/auth.service';
-import { SessionService } from '../../modules/auth/session.service';
+import { AuthService } from '../../features/auth/auth.service';
+import { SessionService } from '../../features/auth/session.service';
 
 /**
  * Phase 1B (Corrected): Session Validation Middleware
@@ -10,7 +10,7 @@ import { SessionService } from '../../modules/auth/session.service';
  * Does NOT acquire or hold database connections.
  *
  * Flow:
- * 1. Extract session token from Authorization header or cookie
+ * 1. Pass the complete Cookie header to Better Auth for signed-cookie validation
  * 2. Validate token with Better Auth API (uses pool connection, released immediately)
  * 3. Attach authenticated user to request
  * 4. Pass to next middleware (guard or controller)
@@ -37,17 +37,16 @@ export class SessionValidationMiddleware implements NestMiddleware {
 
   async use(request: Request, response: Response, next: NextFunction) {
     try {
-      // Extract session token from request
-      const sessionToken = this.sessionService.extractSessionToken(request);
+      const cookieHeader = this.sessionService.extractCookieHeader(request);
 
-      if (!sessionToken) {
+      if (!cookieHeader) {
         // No session found; proceed without authentication
         // Guards will reject if endpoint requires auth
         return next();
       }
 
       // Validate session token with Better Auth API
-      const validationResult = await this.authService.validateSession(sessionToken);
+      const validationResult = await this.authService.validateSession(cookieHeader);
 
       if (validationResult && validationResult.userId) {
         const userId = validationResult.userId;

@@ -4,10 +4,11 @@ A modern loyalty and rewards platform built for Tunisian SMBs, enabling merchant
 
 ## Status
 
-**Phase 0: Complete** — Architecture research, technology evaluation, and Release 1 scope definition complete.  
-**Phase 1A: Ready** — Awaiting explicit approval to begin environment setup and infrastructure.
+**Current engineering focus:** Backend restructuring and documentation consolidation are active. The canonical roadmap is `docs/ROADMAP.md` and it remains the source of truth for sprint, release, and backlog status.
 
-See `docs/IMPLEMENTATION_PLAN.md` for the detailed roadmap.
+**Release status:** Release 1 remains in progress. PB-19 and PB-20 are explicitly deferred.
+
+Historical roadmap artifacts remain in `docs/IMPLEMENTATION_PLAN.md`, but the maintained plan is the consolidated `docs/ROADMAP.md` document.
 
 ## What It Does
 
@@ -44,7 +45,8 @@ See `docs/DECISIONS.md` for detailed rationale and evaluation.
 - **Architecture & Tech Choices:** `docs/ARCHITECTURE.md`
 - **Database Schema & Migration Strategy:** `docs/DATABASE.md`
 - **Project Structure & Organization:** `docs/PROJECT_STRUCTURE.md`
-- **Implementation Roadmap:** `docs/IMPLEMENTATION_PLAN.md`
+- **Canonical Roadmap:** `docs/ROADMAP.md`
+- **Historical Plan:** `docs/IMPLEMENTATION_PLAN.md`
 - **Architectural Decisions:** `docs/DECISIONS.md`
 - **Technology Reuse Audit:** `docs/RESOURCE_AUDIT.md`
 - **Development Guidelines:** `AGENTS.md`
@@ -75,14 +77,14 @@ See `docs/DECISIONS.md` for detailed rationale and evaluation.
 - Role-based access enforcement via NestJS guards
 
 **Backend Structure (NestJS Modular Monolith):**
-- `auth` — Better Auth integration, phone OTP, email/password setup
-- `customers` — Customer accounts, profiles, memberships
-- `merchants` — Merchant accounts, business management
-- `programs` — Loyalty program configuration (stamps, points)
-- `loyalty` — Earning, redemption, transaction logic
-- `admin` — Platform administration
-- `shared` — Utilities, database layer, error handling
-- `database` — Drizzle ORM schema, migrations, seeding
+- `backend/src/features/auth` — Better Auth integration, phone OTP, email/password setup
+- `backend/src/features/customers` — Customer accounts, profiles, memberships
+- `backend/src/features/merchants` — Merchant accounts, business management
+- `backend/src/features/programs` — Loyalty program configuration (stamps, points)
+- `backend/src/features/loyalty` — Earning, redemption, transaction logic
+- `backend/src/features/admin` — Platform administration
+- `backend/src/shared` — Utilities, database layer, guards, middleware, shared infrastructure
+- `backend/src/database` — Drizzle ORM schema, migrations, and generated configuration retained for the current codebase
 
 **Frontend Structure (React + Vite):**
 - `features/` — Feature-based organization (auth, customer-dashboard, merchant-dashboard)

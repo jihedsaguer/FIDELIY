@@ -56,97 +56,140 @@ Note: One user can have BOTH customer_accounts AND merchant_accounts records.
 Example: User 123 is both a customer (earning rewards) and a merchant (managing program).
 ```
 
+### Authentication lifecycle
+
+Migration `0003_auth_lifecycle` allows multiple Better Auth sessions per user. It also provisions a customer capability when a Better Auth user has a verified phone number and a merchant capability when a Better Auth `credential` account is created. Provisioning uses the user ID from the Better Auth database row, not request-supplied role or ownership data.
+
 ### Domain: Businesses
 ```
-businesses (Physical or logical business entities)
+businesses (Merchant-owned business/brand; one per merchant account)
 ├─ id: UUID (PK)
 ├─ merchant_id: UUID (FK → merchant_accounts.id)
 ├─ name: varchar
 ├─ description: text (optional)
-├─ branchCount: integer
+├─ branch_count: integer
+├─ business_phone: varchar(20), nullable until configured
+├─ phone_publicly_displayed: boolean (default false)
+├─ phone_visibility_configured: boolean (default false; distinguishes default from explicit choice)
+├─ logo_url: varchar(2048), optional until completion
+├─ theme_primary_color / theme_accent_color: #RRGGBB, optional until completion
+├─ onboarding_completed: boolean (default false; set only after backend validation)
 ├─ createdAt: timestamp
-└─ RLS Policy: Merchant can select only their own businesses
+└─ RLS Policy: Merchant can select/insert/update only their own business
 
-branches (Individual physical locations)
+branches (Locations under one business/brand)
 ├─ id: UUID (PK)
-├─ businessId: UUID (FK → businesses.id)
+├─ business_id: UUID (FK → businesses.id; non-unique index permits multiple branches)
 ├─ name: varchar
-├─ address: varchar
+├─ address: varchar (optional in schema; required for onboarding completion)
 ├─ phone: varchar (optional)
-├─ qrCodeId: varchar (unique, for QR identification)
-├─ createdAt: timestamp
-└─ RLS Policy: Merchant can select only branches of their businesses
-
-businesses (Physical or logical business entities)
-├─ id: UUID (PK)
-├─ merchantId: UUID (FK → merchants.id)
-├─ name: varchar
-├─ description: text (optional)
-├─ branchCount: integer
-├─ createdAt: timestamp
-└─ RLS Policy: Merchant can select only their own businesses
-
-branches (Individual physical locations)
-├─ id: UUID (PK)
-├─ businessId: UUID (FK → businesses.id)
-├─ name: varchar
-├─ address: varchar
-├─ phone: varchar (optional)
-├─ qrCodeId: varchar (unique, for QR identification)
+├─ qr_code_id: varchar (unique opaque identifier; QR generation is not part of setup)
 ├─ createdAt: timestamp
 └─ RLS Policy: Merchant can select only branches of their businesses
 ```
+
+Migration `0004_merchant_business_setup` adds the business setup fields and changes the branch-to-business index from unique to non-unique. It preserves existing business/branch rows and the existing merchant ownership path.
+
+The business setup API reports `required` when no business exists, `in_progress` while `onboarding_completed` is false, and `complete` only after the backend validates every required field. The default public-phone setting remains false; `phone_visibility_configured` tracks whether the merchant explicitly selected true or false.
 
 ### Domain: Loyalty Programs
 ```
-programs (Loyalty program configuration)
+programs (Business-level, versioned programme selection)
 ├─ id: UUID (PK)
-├─ businessId: UUID (FK → businesses.id)
-├─ name: varchar
-├─ type: 'stamps' | 'points' | 'combined'
-├─ earningRule: JSON (e.g., { "type": "per_purchase", "value": 1 })
-├─ rewardThreshold: integer (points/stamps needed for reward)
-├─ isActive: boolean
-├─ createdAt: timestamp
-└─ RLS Policy: Merchant can select programs of their businesses; customer can select programs they enrolled in
+├─ business_id: UUID (FK → businesses.id; branches share this programme)
+├─ type: 'stamps' | 'points' | 'both'
+├─ version: integer (unique within the business)
+├─ status: 'active' | 'inactive'
+├─ activated_at / deactivated_at: timestamp (explicit lifecycle)
+└─ created_at: timestamp
+
+program_configurations (One immutable settings record per enabled type/version)
+├─ id: UUID (PK; future activity can reference this exact configuration)
+├─ program_id: UUID (FK → programs.id)
+├─ type: 'stamps' | 'points'
+├─ settings: JSON object (mechanics intentionally not defined in Checkpoint 6A)
+└─ created_at: timestamp
 ```
 
-### Domain: Memberships
+Migration `0005_versioned_program_configuration` adds these tables, owner-scoped RLS policies, and a partial unique index permitting at most one active programme per business. Each programme version has one configuration row per enabled type. A change deactivates the previous version and inserts a new one in the same transaction; history is retained, and foreign keys restrict deletion of programme history. Branches inherit the business-level configuration through `branches.business_id`.
+
+The policies are an additional tenant boundary, not a claim of database-enforced isolation in the current local environment: its application role has the known `BYPASSRLS` limitation. Service operations also scope every read/write through the authenticated user’s business ownership.
+
+The merchant API exposes `GET /programs/current`, `GET /programs/history`, `POST /programs` for initial creation, and `POST /programs/versions` for a new active version. A payload selects `stamps`, `points`, or `both` and supplies one JSON object per enabled type under `configurations`. Empty objects are accepted because earning, spending, conversion, and reward fields are not yet product-defined. The API derives the business from the authenticated merchant and does not accept business or merchant identifiers as ownership proof. Future configuration-specific loyalty activity must reference the relevant `program_configurations.id`; no transaction, balance, membership, earning, or redemption tables are implemented by this checkpoint.
+
+The currently documented earning rules, reward thresholds, enrollments, balances, transactions, rewards, and redemption records below are future product/domain designs, not implemented tables. No subscription or entitlement model currently exists.
+
+### Domain: Memberships & Customer QR Credentials (Checkpoint 6B-A & 6B-B)
 ```
-enrollments (Customer membership in programs)
+customer_business_memberships (Business-scoped customer enrollment)
 ├─ id: UUID (PK)
-├─ customerId: UUID (FK → customers.id)
-├─ programId: UUID (FK → programs.id)
-├─ joinedAt: timestamp
-├─ isActive: boolean
-└─ UNIQUE(customerId, programId)
-└─ RLS Policy: Customer can select only their enrollments
+├─ customer_account_id: UUID (FK → customer_accounts.id)
+├─ business_id: UUID (FK → businesses.id)
+├─ status: 'active' | 'inactive'
+├─ joined_at: timestamp
+├─ left_at: timestamp (nullable)
+├─ created_at / updated_at: timestamp
+├─ UNIQUE(customer_account_id, business_id)
+└─ UNIQUE(id, business_id) -- for compound FKs
+
+membership_lifecycle_events (Append-only membership join/leave audit trail)
+├─ id: UUID (PK)
+├─ membership_id: UUID (FK → customer_business_memberships.id)
+├─ type: 'joined' | 'left'
+└─ occurred_at: timestamp
+
+customer_qr_credentials (Personal customer QR credential lifecycle)
+├─ id: UUID (PK)
+├─ customer_account_id: UUID (FK → customer_accounts.id)
+├─ credential_hash: varchar(64) (UNIQUE, SHA-256 hex digest)
+├─ issued_at: timestamp
+├─ revoked_at: timestamp (nullable)
+└─ UNIQUE(customer_account_id) WHERE revoked_at IS NULL
 ```
 
-### Domain: Loyalty Transactions
-```
-transactions (Earning transactions)
-├─ id: UUID (PK, idempotency key)
-├─ enrollmentId: UUID (FK → enrollments.id)
-├─ branchId: UUID (FK → branches.id)
-├─ amount: decimal (purchase amount in DNT or equivalent)
-├─ stampAwarded: integer
-├─ pointsAwarded: integer
-├─ transactionType: 'purchase' | 'manual_award'
-├─ merchantConfirmedAt: timestamp
-├─ createdAt: timestamp
-└─ RLS Policy: Customer can view their transactions; merchant can view transactions for their branches
+Migration `0006_customer_business_memberships` introduced business-scoped memberships, public business QR identifiers, and personal QR credential storage. Migration `0007_secure_customer_qr_loyalty_ledger` migrated plaintext credentials to 64-character SHA-256 hashes (`credential_hash`), ensuring raw secrets are returned only once upon issuance or rotation and never stored or returned in ordinary read APIs. Credential resolution compares the presented credential's SHA-256 hash against active records in the database.
 
-balances (Current loyalty balance per enrollment)
-├─ enrollmentId: UUID (PK, FK → enrollments.id)
-├─ stamps: integer (current balance)
-├─ points: integer (current balance)
-├─ updatedAt: timestamp
-└─ CONSTRAINT: stamps >= 0, points >= 0
-└─ RLS Policy: Customer can select their balances; merchant can select for their programs
+### Domain: Internal Loyalty Ledger (Checkpoint 6B-B)
+```
+loyalty_transactions (Immutable activity transaction headers)
+├─ id: UUID (PK)
+├─ business_id: UUID (FK → businesses.id)
+├─ membership_id: UUID (FK → customer_business_memberships.id via (membership_id, business_id))
+├─ branch_id: UUID (FK → branches.id via (branch_id, business_id), nullable)
+├─ merchant_account_id: UUID (FK → merchant_accounts.id)
+├─ category: 'purchase' | 'manual_adjustment' | 'reversal'
+├─ occurred_at: timestamp
+├─ idempotency_key: varchar(128)
+├─ request_fingerprint: varchar(64) (SHA-256 hex of canonical payload)
+├─ reverses_transaction_id: UUID (FK → loyalty_transactions.id via (reverses_transaction_id, business_id, membership_id), nullable)
+├─ created_at: timestamp
+├─ UNIQUE(business_id, idempotency_key)
+├─ UNIQUE(id, business_id, membership_id) -- compound key for safe reversal references
+├─ UNIQUE(reverses_transaction_id) WHERE reverses_transaction_id IS NOT NULL -- single reversal per transaction
+└─ CONSTRAINT: length(idempotency_key) BETWEEN 1 AND 128
+└─ CONSTRAINT: request_fingerprint ~ '^[0-9a-f]{64}$'
+└─ CONSTRAINT: category = 'reversal' <=> reverses_transaction_id IS NOT NULL
+
+loyalty_activity_entries (Typed signed ledger delta records)
+├─ id: UUID (PK)
+├─ transaction_id: UUID (FK → loyalty_transactions.id)
+├─ activity_type: 'stamps' | 'points'
+├─ delta: integer (CONSTRAINT: delta <> 0)
+├─ program_configuration_id: UUID (FK → program_configurations.id)
+├─ reverses_entry_id: UUID (FK → loyalty_activity_entries.id, nullable)
+├─ created_at: timestamp
+├─ INDEX(transaction_id)
+├─ INDEX(program_configuration_id)
+└─ UNIQUE(reverses_entry_id) WHERE reverses_entry_id IS NOT NULL -- single reversal per entry
 ```
 
-### Domain: Rewards & Redemptions
+Migration `0007_secure_customer_qr_loyalty_ledger` adds `loyalty_transactions` and `loyalty_activity_entries` with database-level append-only triggers (`reject_loyalty_ledger_mutation`) preventing `UPDATE` and `DELETE` operations. Ledger operations execute inside serializable transactions with bounded retries for PostgreSQL serialization conflicts (`40001`) and deadlocks (`40P01`). Idempotency is business-scoped and verified against deterministic SHA-256 payload fingerprints.
+
+Migration `0008_full_reversal_integrity` adds database-level uniqueness for `reverses_transaction_id` and `reverses_entry_id`, guaranteeing at most one reversal transaction per original transaction and at most one reversal entry per original entry. Exact inverse delta matching (`delta = -original.delta`) and complete original entry set coverage are enforced in the serializable transaction service layer.
+
+There are NO client-facing or merchant-facing transaction write endpoints in Checkpoint 6B-B. Stamp/point earning formulas, customer balances, and reward redemptions remain planned for future checkpoints.
+
+### Domain: Rewards & Redemptions (Future Design)
 ```
 rewards (Reward definitions)
 ├─ id: UUID (PK)
@@ -314,6 +357,19 @@ USING (branch_id IN (
 ));
 ```
 
+### Local Docker Development
+
+The root `docker-compose.yml` runs the existing PostgreSQL service and the backend as separate containers. The backend connects to the database through the Compose service hostname `postgres` on port `5432`; do not use `localhost` for the container-to-container connection. The root `.env` must provide `POSTGRES_PASSWORD` and `BETTER_AUTH_SECRET`. In PowerShell, build and start both services with:
+
+```powershell
+$env:COMPOSE_BAKE = "false"
+docker compose up -d --build backend
+```
+
+Disabling Compose Bake avoids its `.env` parser rejecting a UTF-8 BOM in the current root `.env`.
+
+The current local development database role is a PostgreSQL superuser and bypasses RLS. RLS policies are therefore not effectively enforced for backend connections in this environment. Do not introduce real tenant data or deploy with this role; establish and verify a least-privilege application role before either.
+
 ## 5. Transaction Isolation for Loyalty Operations
 
 ### Earning Transaction (Atomic)
@@ -395,13 +451,14 @@ const balances = await db
 
 ## 7. Migrations Strategy
 
-### Development (Supabase)
+### Development
+
 ```bash
 # Generate migration
 npx drizzle-kit generate
 
-# Push to development database
-npx drizzle-kit push
+# Apply reviewed migrations through the existing runner
+npm run db:migrate
 ```
 
 ### Production (Neon or Supabase)

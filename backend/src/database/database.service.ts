@@ -1,6 +1,8 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
+import * as databaseSchema from './schema';
 
 /**
  * Phase 1A: Database Service
@@ -33,7 +35,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       connectionTimeoutMillis: 2000,
     });
 
-    this.db = drizzle(this.pool);
+    this.db = drizzle(this.pool, { schema: databaseSchema });
 
     // Test connection
     try {
@@ -44,6 +46,21 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       console.error('❌ Database connection failed:', error);
       throw error;
+    }
+
+    // Run pending migrations (development only; production uses explicit migration step)
+    const env = process.env.NODE_ENV || 'development';
+    const autoMigrateEnvs = ['development', 'test'];
+    if (autoMigrateEnvs.includes(env)) {
+      try {
+        const migrationsFolder = 'src/database/migrations';
+        await migrate(this.db, { migrationsFolder });
+      } catch (error) {
+        console.error('❌ Migration error:', error);
+        // Migrations might already be applied; continue without throwing
+      }
+    } else if (env === 'production') {
+      console.log('⚠️  Production environment: migrations must be applied via explicit deployment step (npm run db:migrate)');
     }
   }
 

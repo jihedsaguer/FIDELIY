@@ -33,6 +33,11 @@ import { DatabaseService } from '../../database/database.service';
  *     return [result1, result2];
  *   })
  */
+export interface TenantContextOptions {
+  isolationLevel?: 'read committed' | 'serializable' | 'repeatable read';
+  serializationRetries?: number;
+}
+
 @Injectable()
 export class TenantContextService {
   constructor(private databaseService: DatabaseService) {}
@@ -49,66 +54,82 @@ export class TenantContextService {
    *
    * @param userId Authenticated user ID (server-side principal only)
    * @param queryFn Function receiving connection; executes queries within transaction
+   * @param options Transaction configuration including isolation level and retry limits
    * @returns Result of queryFn
    * @throws Error if queryFn throws or transaction fails; connection guaranteed released
    */
   async executeWithContext<T>(
     userId: string,
     queryFn: (connection: PoolClient) => Promise<T>,
+    options: TenantContextOptions = {},
   ): Promise<T> {
     if (!userId || typeof userId !== 'string') {
       throw new Error('userId must be a non-empty string');
     }
 
-    const pool: Pool = this.databaseService.getPool();
-    let connection: PoolClient | null = null;
-
-    try {
-      // Acquire connection from pool
-      connection = await pool.connect();
-
-      // Begin transaction
-      await connection.query('BEGIN');
-
-      // Set RLS context (transaction-scoped: true)
-      // Context auto-clears on COMMIT or ROLLBACK
-      await connection.query(
-        "SELECT set_config('app.user_id', $1::text, true)",
-        [userId],
+    const isolationLevel = options.isolationLevel ?? 'read committed';
+    const serializationRetries =
+      isolationLevel === 'serializable'
+        ? (options.serializationRetries ?? 3)
+        : 0;
+    if (
+      !Number.isInteger(serializationRetries) ||
+      serializationRetries < 0 ||
+      serializationRetries > 5
+    ) {
+      throw new RangeError(
+        'serializationRetries must be an integer between 0 and 5',
       );
+    }
 
-      // Execute query function within transaction
-      // queryFn MUST use the provided connection, never the global pool
-      const result = await queryFn(connection);
+    const pool: Pool = this.databaseService.getPool();
+    let attempt = 0;
 
-      // Commit transaction
-      await connection.query('COMMIT');
-
-      return result;
-    } catch (error) {
-      // Rollback on error
-      if (connection) {
-        try {
-          await connection.query('ROLLBACK');
-        } catch (rollbackError) {
-          // Log but don't mask original error
-          console.error(
-            `[TenantContextService] Rollback failed: ${rollbackError instanceof Error ? rollbackError.message : 'unknown error'}`,
-          );
+    while (true) {
+      let connection: PoolClient | null = null;
+      try {
+        connection = await pool.connect();
+        const beginSql =
+          isolationLevel === 'read committed'
+            ? 'BEGIN'
+            : `BEGIN ISOLATION LEVEL ${isolationLevel.toUpperCase()}`;
+        await connection.query(beginSql);
+        await connection.query(
+          "SELECT set_config('app.user_id', $1::text, true)",
+          [userId],
+        );
+        const result = await queryFn(connection);
+        await connection.query('COMMIT');
+        return result;
+      } catch (error) {
+        if (connection) {
+          try {
+            await connection.query('ROLLBACK');
+          } catch (rollbackError) {
+            console.error(
+              `[TenantContextService] Rollback failed: ${rollbackError instanceof Error ? rollbackError.message : 'unknown error'}`,
+            );
+          }
         }
-      }
 
-      // Re-throw original error
-      throw error;
-    } finally {
-      // Always release connection to pool
-      if (connection) {
-        try {
-          connection.release();
-        } catch (releaseError) {
-          console.error(
-            `[TenantContextService] Connection release failed: ${releaseError instanceof Error ? releaseError.message : 'unknown error'}`,
-          );
+        const isRetryableConcurrencyFailure =
+          typeof error === 'object' &&
+          error !== null &&
+          'code' in error &&
+          (error.code === '40001' || error.code === '40P01');
+        if (!isRetryableConcurrencyFailure || attempt >= serializationRetries) {
+          throw error;
+        }
+        attempt += 1;
+      } finally {
+        if (connection) {
+          try {
+            connection.release();
+          } catch (releaseError) {
+            console.error(
+              `[TenantContextService] Connection release failed: ${releaseError instanceof Error ? releaseError.message : 'unknown error'}`,
+            );
+          }
         }
       }
     }

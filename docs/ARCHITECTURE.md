@@ -67,36 +67,39 @@ FIDELIY is organized as a modular monolith with clear separation between fronten
 
 ## 3. NestJS Backend Module Structure
 
-**Core Modules (8):**
+The repository is aligned to a feature-owned backend structure under `backend/src/features`. Shared infrastructure remains in `backend/src/shared`, while the database layer continues to live under `backend/src/database` until a dedicated schema decomposition checkpoint is approved.
+
+**Feature folders (8):**
 
 1. **auth** — Better Auth integration, phone OTP setup, email/password setup
    - Responsible for: Session management, phone verification, email verification
-   - Exports: Session validation, user type guards (CustomerGuard, MerchantGuard)
-   - Does not: Business logic (kept in domain modules)
+   - Exports: Session validation, auth service, session service
+   - Does not: Business logic (kept in domain features)
 
 2. **customers** — Customer account management
-   - Responsible for: Customer profile, phone verification status, membership list
-   - Entities: Customers table (linked to users table via userId)
-   - Does not: Loyalty logic (kept in loyalty module)
+   - Responsible for: Customer profile, phone verification status, membership access
+   - Exports: Customer controller and module
+   - Does not: Loyalty logic (kept in loyalty feature)
 
 3. **merchants** — Merchant account and business management
    - Responsible for: Merchant profile, business management, branch management
-   - Entities: Merchants table, Businesses table, Branches table
-   - Does not: Program management (kept in programs module)
+   - Exports: Merchant controller and module
+   - Does not: Program management (kept in programs feature)
+   - Business setup API: `GET /merchants/business-setup`, idempotent `POST /merchants/business-setup/business` and `POST /merchants/business-setup/first-branch`, owner-scoped `PATCH` operations on those setup resources, and `POST /merchants/business-setup/complete`
+   - Setup ownership is derived from the validated session user and `merchant_accounts`; every business/branch query uses `TenantContextService`
+   - Completion requires business name, business phone, an explicitly selected phone-visibility preference, either a logo URL or a stored device-uploaded logo, both theme colors, and the first branch name and address
+   - The setup API supports device-based logo upload and owner-scoped retrieval; it does not add additional branch-management UI or loyalty transaction operations. Business-level programme configuration is implemented in Checkpoint 6A
+   - Tenant context is applied, but the current local PostgreSQL role bypasses RLS; production tenant isolation is not yet verified
 
 4. **programs** — Loyalty program configuration
-   - Responsible for: Program creation, rule configuration (stamps, points), program updates
-   - Entities: Programs table (linked to businesses)
-   - Does not: Transaction processing (kept in loyalty module)
+   - Responsible for: Program creation, rule configuration, program updates
+   - Exports: Programs module
+   - Does not: Transaction processing (kept in loyalty feature)
 
 5. **loyalty** — Core transaction processing
    - Responsible: Earning transactions, redemption processing, balance management
-   - Submodules: 
-     - `earning` — Stamp/point earning logic
-     - `redemption` — Redemption validation and processing
-     - `balances` — Current balance queries
-   - Entities: Transactions table, RedemptionCodes table
-   - Does not: Program configuration (kept in programs module)
+   - Exports: Loyalty module
+   - Does not: Program configuration (kept in programs feature)
 
 6. **admin** — Platform administration
    - Responsible for: Merchant onboarding, system health, audit logs
@@ -104,13 +107,28 @@ FIDELIY is organized as a modular monolith with clear separation between fronten
 
 7. **shared** — Shared utilities, guards, error handling
    - Responsible for: NestJS guards (CustomerGuard, MerchantGuard), error handling, database utilities, RLS context setup
-   - Exports: Guard decorators, error filters, database helpers
+   - Exports: Guard decorators, middleware, database helpers
    - Does not: Domain logic
 
-8. **database** — Drizzle ORM schema, migrations, seeding
-   - Responsible for: Table definitions, relationships, RLS policies
-   - Exports: All tables as Drizzle schema, migration utilities
+8. **database** — Current Drizzle schema, migrations, configuration
+   - Responsible for: Existing table definitions, migration history, runtime DB connection
+   - Exports: schema and Drizzle helpers
    - Does not: Business logic
+
+**Important constraint:** The repo still uses the existing centralized Drizzle schema entry point. Schema ownership by feature directory is a planned structural follow-up that is intentionally not implemented in this checkpoint.
+
+#### Merchant business setup contract
+
+| Method and route | Request | Behavior |
+| --- | --- | --- |
+| `GET /merchants/business-setup` | None | Returns the authenticated merchant's setup status, business, and branches. |
+| `POST /merchants/business-setup/business` | `{ "name": string }` | Creates the initial business. A retry returns the existing business without creating another. |
+| `PATCH /merchants/business-setup/business` | Partial business fields: `name`, `description`, `businessPhone`, `phonePubliclyDisplayed`, `logoUrl`, `theme` | Updates only the authenticated merchant's business. `theme` uses `{ "primaryColor": "#RRGGBB", "accentColor": "#RRGGBB" }`; nullable optional branding/contact fields may be cleared. |
+| `POST /merchants/business-setup/first-branch` | `{ "name": string, "address": string }` | Creates the first branch. Retries return that existing branch. |
+| `PATCH /merchants/business-setup/first-branch` | Partial first-branch fields: `name`, `address`, `phone` | Updates the earliest branch selected for onboarding. |
+| `POST /merchants/business-setup/complete` | None | Persists completion only if all required business and first-branch fields are valid; otherwise returns HTTP 400 with `missingFields`. |
+
+The setup response is `{ status, business, branches }`. `status` is `required` with `business: null` when no business exists, `in_progress` until validated completion, and `complete` afterward. `phonePubliclyDisplayed` defaults to false; `phoneVisibilityConfigured` separately reports whether the merchant explicitly chose true or false. Mutations never accept a merchant or owner ID from the client.
 
 ## 4. Authentication & Authorization Architecture
 
@@ -224,22 +242,33 @@ await db.execute(sql`SET rls.current_user_id = ${userId}`)
 await db.execute(sql`SET rls.current_user_type = ${userType}`)
 ```
 
-## 6. Transaction Integrity for Loyalty Operations
+## 6. Transaction Integrity and Loyalty Ledger Foundation (Checkpoint 6B-B)
 
-### Atomic Earning Transaction
-```sql
-BEGIN TRANSACTION;
-  -- Verify customer membership
-  -- Calculate eligible rewards (based on program rules)
-  -- Add transaction record
-  -- Update balance
-COMMIT;
-```
+### 6.1 Internal Loyalty Ledger
+Loyalty activity is recorded in an immutable, append-only ledger (`loyalty_transactions` and `loyalty_activity_entries`):
+- **Transaction Headers:** Represent discrete loyalty activity events (purchase, manual adjustment, reversal). Bound to the business, customer membership, acting merchant account, and optional branch.
+- **Typed Signed Entries:** Store signed integer deltas (stamps, points) referencing exact `program_configurations.id` rows to preserve history across program version updates.
+- **Append-Only Triggers:** Database triggers (`reject_loyalty_ledger_mutation`) reject any `UPDATE` or `DELETE` statements on ledger records.
+- **Reversal Relationships:** Linked full compensating transactions referencing original headers and entries. Database partial unique indexes enforce at most one reversal per original transaction and at most one reversal per activity entry; the service validates full entry set coverage and exact inverse delta matching (`delta = -original.delta`).
+- **Internal Service Boundary:** `LoyaltyLedgerService` is strictly an internal service foundation; no client-facing or merchant-facing write routes exist in Checkpoint 6B-B.
 
-### Preventing Double-Spending
-- UNIQUE constraint on transaction IDs (idempotency key)
-- Pessimistic locking on balance updates (SELECT FOR UPDATE)
-- Comprehensive tests for concurrent operations
+### 6.2 Serializable Isolation and Concurrency
+- `TenantContextService.executeWithContext` supports configurable isolation levels (`read committed`, `serializable`, `repeatable read`).
+- Ledger operations run at `serializable` isolation with row locks (`FOR SHARE` on business/branch/configurations, `FOR UPDATE` on memberships).
+- **Bounded Retry:** Transient concurrency failures (PostgreSQL serialization failure `40001` and deadlock `40P01`) are automatically retried up to 3 times with fresh connections; non-retryable errors and exhausted retries fail fast and preserve original errors.
+
+### 6.3 Business-Scoped Idempotency & Fingerprinting
+- Scoped by `(business_id, idempotency_key)` unique constraint so different businesses never collide.
+- Payload fingerprinting computes a deterministic SHA-256 digest over canonicalized request fields (excluding the key itself, with sorted entry lists).
+- Same key + same fingerprint returns the original outcome.
+- Same key + different fingerprint returns `409 ConflictException`.
+
+### 6.4 Secure Customer QR Credential Lifecycle
+- Credentials generated as cryptographically strong 32-byte base64url tokens (43 characters).
+- Raw secret returned **only once** upon initial issuance or rotation.
+- Stored exclusively as 64-character SHA-256 hex digests (`credential_hash`).
+- Customer retrieval returns status metadata (`{ issuedAt, active: true }`), never secrets or hashes.
+- Merchant resolution (`POST /merchants/customers/resolve-qr`) hashes the presented token, performs index lookup, and verifies active business membership without exposing credentials.
 
 ## 7. Deployment & Scaling
 

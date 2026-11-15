@@ -20,7 +20,7 @@
 | **Acquisition Procedure** | Generate via: `crypto.randomBytes(32).toString('hex')` (JavaScript) or `openssl rand -hex 32` (CLI) |
 | **Current Status** | Available (package installed: `better-auth@^1.7.14`) |
 | **Implementation Dependency** | Auth module (merchant email/password setup, customer phone OTP setup) |
-| **Configuration Location** | `backend/src/modules/auth/better-auth.config.ts` |
+| **Configuration Location** | `backend/src/features/auth/better-auth.config.ts` |
 | **Notes** | Phone Number plugin (official) for customers; email/password provider for merchants; single instance with no separate identity system |
 
 **Required Credentials:**
@@ -129,7 +129,7 @@ npm run db:migrate   # Should execute migrations against running DB
 | **Acquisition Procedure** | Select vendor; create account; generate API credentials; integrate via Better Auth Phone Number plugin's `sendOTP` callback |
 | **Current Status** | Mock SMS provider active in local development; real vendor selection pending |
 | **Implementation Dependency** | Auth module (customer phone verification) |
-| **Configuration Location** | `backend/src/modules/auth/better-auth.config.ts` |
+| **Configuration Location** | `backend/src/features/auth/better-auth.config.ts` |
 | **Notes** | Must support Tunisia (+216); no active SMS provider selected yet |
 
 **Local Development (Current):**

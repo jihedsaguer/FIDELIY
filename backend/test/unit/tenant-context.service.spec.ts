@@ -175,8 +175,11 @@ describe('TenantContextService - Transaction-Bound RLS Execution', () => {
 
   describe('querySingleWithContext - Guard Query Pattern', () => {
     it('should invoke actual querySingleWithContext method', async () => {
-      mockConnection.query.mockResolvedValueOnce({
-        rows: [{ id: 'account-123' }],
+      mockConnection.query.mockImplementation(async (sql: string) => {
+        if (sql === 'BEGIN' || sql.includes("set_config('app.user_id'")) {
+          return { rows: [] };
+        }
+        return { rows: [{ id: 'account-123' }] };
       });
 
       const result = await service.querySingleWithContext<{ id: string }>(
@@ -189,8 +192,11 @@ describe('TenantContextService - Transaction-Bound RLS Execution', () => {
     });
 
     it('should execute provided SQL query with parameters', async () => {
-      mockConnection.query.mockResolvedValueOnce({
-        rows: [{ id: 'merchant-456' }],
+      mockConnection.query.mockImplementation(async (sql: string) => {
+        if (sql === 'BEGIN' || sql.includes("set_config('app.user_id'")) {
+          return { rows: [] };
+        }
+        return { rows: [{ id: 'merchant-456' }] };
       });
 
       await service.querySingleWithContext<{ id: string }>(
@@ -209,8 +215,11 @@ describe('TenantContextService - Transaction-Bound RLS Execution', () => {
     });
 
     it('should return first row from result set', async () => {
-      mockConnection.query.mockResolvedValueOnce({
-        rows: [{ id: 'row1' }, { id: 'row2' }],
+      mockConnection.query.mockImplementation(async (sql: string) => {
+        if (sql === 'BEGIN' || sql.includes("set_config('app.user_id'")) {
+          return { rows: [] };
+        }
+        return { rows: [{ id: 'row1' }, { id: 'row2' }] };
       });
 
       const result = await service.querySingleWithContext<{ id: string }>(
@@ -223,8 +232,11 @@ describe('TenantContextService - Transaction-Bound RLS Execution', () => {
     });
 
     it('should return null when no rows found', async () => {
-      mockConnection.query.mockResolvedValueOnce({
-        rows: [],
+      mockConnection.query.mockImplementation(async (sql: string) => {
+        if (sql === 'BEGIN' || sql.includes("set_config('app.user_id'")) {
+          return { rows: [] };
+        }
+        return { rows: [] };
       });
 
       const result = await service.querySingleWithContext<{ id: string }>(
@@ -270,6 +282,123 @@ describe('TenantContextService - Transaction-Bound RLS Execution', () => {
       } catch (e) {
         expect(e).toBe(originalError);
       }
+    });
+  });
+
+  describe('Transaction Isolation and Bounded Retry', () => {
+    it('should use BEGIN ISOLATION LEVEL SERIALIZABLE when serializable requested', async () => {
+      await service.executeWithContext(
+        'user-123',
+        async () => ({ ok: true }),
+        { isolationLevel: 'serializable' },
+      );
+
+      const beginCall = mockConnection.query.mock.calls.find(
+        (call: any) => call[0] === 'BEGIN ISOLATION LEVEL SERIALIZABLE',
+      );
+      expect(beginCall).toBeDefined();
+    });
+
+    it('should retry on serialization failure (code 40001) up to serializationRetries and succeed', async () => {
+      let callCount = 0;
+      const serializationError = Object.assign(new Error('could not serialize access'), {
+        code: '40001',
+      });
+
+      const result = await service.executeWithContext(
+        'user-123',
+        async () => {
+          callCount += 1;
+          if (callCount < 3) {
+            throw serializationError;
+          }
+          return { resolved: true, attempts: callCount };
+        },
+        { isolationLevel: 'serializable', serializationRetries: 3 },
+      );
+
+      expect(result).toEqual({ resolved: true, attempts: 3 });
+      expect(callCount).toBe(3);
+    });
+
+    it('should re-throw serialization failure when retries are exhausted', async () => {
+      let callCount = 0;
+      const serializationError = Object.assign(new Error('could not serialize access'), {
+        code: '40001',
+      });
+
+      await expect(
+        service.executeWithContext(
+          'user-123',
+          async () => {
+            callCount += 1;
+            throw serializationError;
+          },
+          { isolationLevel: 'serializable', serializationRetries: 2 },
+        ),
+      ).rejects.toMatchObject({ code: '40001' });
+
+      expect(callCount).toBe(3); // Initial attempt (0) + 2 retries (1, 2)
+    });
+
+    it('should retry on deadlock failure (code 40P01) up to serializationRetries and succeed', async () => {
+      let callCount = 0;
+      const deadlockError = Object.assign(new Error('deadlock detected'), {
+        code: '40P01',
+      });
+
+      const result = await service.executeWithContext(
+        'user-123',
+        async () => {
+          callCount += 1;
+          if (callCount < 3) {
+            throw deadlockError;
+          }
+          return { resolved: true, attempts: callCount };
+        },
+        { isolationLevel: 'serializable', serializationRetries: 3 },
+      );
+
+      expect(result).toEqual({ resolved: true, attempts: 3 });
+      expect(callCount).toBe(3);
+    });
+
+    it('should re-throw deadlock failure when retries are exhausted', async () => {
+      let callCount = 0;
+      const deadlockError = Object.assign(new Error('deadlock detected'), {
+        code: '40P01',
+      });
+
+      await expect(
+        service.executeWithContext(
+          'user-123',
+          async () => {
+            callCount += 1;
+            throw deadlockError;
+          },
+          { isolationLevel: 'serializable', serializationRetries: 2 },
+        ),
+      ).rejects.toMatchObject({ code: '40P01' });
+
+      expect(callCount).toBe(3);
+    });
+
+    it('should not retry arbitrary application errors', async () => {
+      let callCount = 0;
+      const appError = new Error('Invalid business logic');
+
+      await expect(
+        service.executeWithContext(
+          'user-123',
+          async () => {
+            callCount += 1;
+            throw appError;
+          },
+          { isolationLevel: 'serializable', serializationRetries: 3 },
+        ),
+      ).rejects.toBe(appError);
+
+      expect(callCount).toBe(1); // No retry
     });
   });
 });

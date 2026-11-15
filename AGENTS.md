@@ -23,9 +23,9 @@ This document defines the guardrails for all agents implementing features in the
 - Exception: Security fixes and critical bug fixes override scope boundaries.
 
 ### Follow Approved Architecture
-- Implement only within the approved architecture defined in `docs/ARCHITECTURE.md` and `docs/DECISIONS.md`.
-- **Backend (NestJS):** Use the modular structure; create features in `src/modules/`.
-- **Frontend (React):** Organize by feature in `src/features/`; shared code in `src/shared/`.
+- Implement only within the approved architecture defined in `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, and `docs/DECISIONS.md`.
+- **Backend (NestJS):** Use the feature-based modular structure; keep feature ownership in `backend/src/features/` and shared infrastructure in `backend/src/shared/`.
+- **Frontend (React):** Organize by feature in `frontend/src/features/`; shared code in `frontend/src/shared/`.
 - **Authentication:** Use Better Auth with:
   - Phone Number plugin for customer authentication (phone OTP)
   - Email/password for merchant authentication
@@ -52,6 +52,7 @@ This document defines the guardrails for all agents implementing features in the
 - Do not clean up, rename, or reorganize code outside the scope of the task.
 - Exception: If a change breaks a naming convention or pattern in the same file, apply the convention locally.
 - Do not extract utilities or abstract patterns unless explicitly requested.
+- Database schema decomposition, migration rewrites, and Better Auth runtime refactoring remain deferred to their own approved checkpoint.
 
 ## Security and Quality Practices
 
@@ -123,3 +124,14 @@ This document defines the guardrails for all agents implementing features in the
 - Mobile apps
 
 Do not implement deferred features without explicit approval.
+
+### AI Agent Efficiency Rules
+
+- Treat project Markdown documentation as persistent context.
+- Start tasks with `git status` and relevant diffs.
+- Never reread the entire repository by default.
+- Inspect only files required for the current task.
+- Avoid repeating architecture and product context already documented.
+- Make minimal, scoped changes and verify them with targeted tests.
+- Update existing documentation after verified work; avoid duplicate files.
+- Keep task reports concise: changes, evidence, tests, unresolved issues, next step.

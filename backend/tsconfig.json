@@ -1,29 +1,49 @@
 {
-  "compilerOptions": {
-    "module": "commonjs",
-    "target": "ES2020",
-    "lib": ["ES2020"],
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "allowSyntheticDefaultImports": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "paths": {
-      "@app/*": ["./app/*"],
-      "@modules/*": ["./modules/*"],
-      "@shared/*": ["./shared/*"],
-      "@database/*": ["./database/*"],
-      "@types/*": ["./types/*"]
-    }
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]
+    "compilerOptions":  {
+                            "module":  "commonjs",
+                            "moduleResolution":  "node",
+                            "target":  "ES2020",
+                            "lib":  [
+                                        "ES2020"
+                                    ],
+                            "outDir":  "./dist",
+                            "rootDir":  "./src",
+                            "strict":  true,
+                            "esModuleInterop":  true,
+                            "skipLibCheck":  true,
+                            "forceConsistentCasingInFileNames":  true,
+                            "resolveJsonModule":  true,
+                            "declaration":  true,
+                            "declarationMap":  true,
+                            "sourceMap":  true,
+                            "allowSyntheticDefaultImports":  true,
+                            "experimentalDecorators":  true,
+                            "emitDecoratorMetadata":  true,
+                            "paths":  {
+                                          "@app/*":  [
+                                                         "./app/*"
+                                                     ],
+                                          "@features/*":  [
+                                                              "./features/*"
+                                                          ],
+                                          "@shared/*":  [
+                                                            "./shared/*"
+                                                        ],
+                                          "@database/*":  [
+                                                              "./database/*"
+                                                          ],
+                                          "@types/*":  [
+                                                           "./types/*"
+                                                       ]
+                                      }
+                        },
+    "include":  [
+                    "src/**/*"
+                ],
+    "exclude":  [
+                    "node_modules",
+                    "dist",
+                    "**/*.spec.ts",
+                    "**/*.test.ts"
+                ]
 }

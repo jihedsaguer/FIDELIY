@@ -96,7 +96,7 @@ npm run db:studio    # Drizzle Studio UI for data inspection
 
 ### 3. NestJS Module Architecture (✅ Structured)
 
-**Files:** `backend/src/modules/` directory structure
+**Files:** `backend/src/features/` directory structure
 
 **Status:** 6 modules created; most are stubs.
 
@@ -124,7 +124,7 @@ npm run db:studio    # Drizzle Studio UI for data inspection
 
 ### 4. Better Auth Configuration (⚠️ Partial)
 
-**File:** `backend/src/modules/auth/better-auth.config.ts`
+**File:** `backend/src/features/auth/better-auth.config.ts`
 
 **Status:** Template complete; integration incomplete.
 
@@ -132,7 +132,7 @@ npm run db:studio    # Drizzle Studio UI for data inspection
 - ✅ Phone Number plugin configured
 - ✅ Email/password provider configured
 - ✅ Drizzle adapter correctly bound
-- ✅ Mock SMS provider for local development
+- ✅ No-op mock SMS adapter for local development; no SMS is delivered and real provider integration remains future work
 - ✅ Session configuration (7-day expiry)
 - ✅ CSRF and rate limiting enabled
 - ✅ Production safety validation for SMS mock
@@ -176,9 +176,9 @@ phoneNumber({
 ### 5. Auth Module Endpoints (❌ Stubs Only)
 
 **Files:**
-- `backend/src/modules/auth/auth.controller.ts` (empty)
-- `backend/src/modules/auth/auth.service.ts` (stub)
-- `backend/src/modules/auth/session.service.ts` (stub)
+- `backend/src/features/auth/auth.controller.ts` (empty)
+- `backend/src/features/auth/auth.service.ts` (stub)
+- `backend/src/features/auth/session.service.ts` (stub)
 
 **Status:** Placeholder implementations only.
 
@@ -348,12 +348,12 @@ export class MerchantGuard implements CanActivate {
    - All tables, relationships, constraints correct
    - Ready for immediate use
 
-2. **Better Auth Configuration Template** (`backend/src/modules/auth/better-auth.config.ts`)
+2. **Better Auth Configuration Template** (`backend/src/features/auth/better-auth.config.ts`)
    - Core logic sound
    - Add Resend integration for production
    - Add real SMS vendor when selected
 
-3. **Module Structure** (`backend/src/modules/`)
+3. **Module Structure** (`backend/src/features/`)
    - 6 modules correctly organized
    - Shared module needs implementation
    - Controllers and services ready for endpoints
@@ -396,7 +396,7 @@ None of the existing code is harmful or should be removed. All can be reused or 
 
 ---
 
-### `backend/src/modules/auth/better-auth.config.ts` — ⚠️ Good Template
+### `backend/src/features/auth/better-auth.config.ts` — ⚠️ Good Template
 
 **Assessment:** Core logic sound; missing email integration.
 
@@ -541,4 +541,3 @@ None of the existing code is harmful or should be removed. All can be reused or 
 **Can we proceed with local development now?** ✅ Yes.
 
 **Next action:** Set up Docker PostgreSQL and run migrations; begin auth endpoint implementation.
-

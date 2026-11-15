@@ -1,285 +1,58 @@
-import {
-  pgTable,
-  uuid,
-  varchar,
-  text,
-  timestamp,
-  boolean,
-  integer,
-  decimal,
-  uniqueIndex,
-  primaryKey,
-  foreignKey,
-  check,
-  json,
-  pgPolicy,
-} from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+import { accounts, sessions, users } from '../features/auth/schemas';
+import {
+  customerAccounts,
+  customerBusinessMemberships,
+  membershipLifecycleEvents,
+  customerQrCredentials,
+} from '../features/customers/schemas';
+import { businesses, branches, merchantAccounts } from '../features/merchants/schemas';
+import {
+  programs,
+  programConfigurations,
+} from '../features/programs/schemas';
+import {
+  loyaltyActivityEntries,
+  loyaltyActivityTypeEnum,
+  loyaltyTransactionCategoryEnum,
+  loyaltyTransactions,
+} from '../features/loyalty/schemas';
 
-/**
- * FIDELIY Database Schema
- *
- * Phase 1A: Milestone 1 - Database Foundation
- * Implements Better Auth canonical tables + core domain entities
- *
- * Multi-Tenancy Strategy:
- * - Global user identity via Better Auth users table
- * - Capability tables (customer_accounts, merchant_accounts) link users to roles
- * - Tenant isolation via PostgreSQL RLS (transaction-scoped app.user_id context)
- * - One user can have BOTH customer and merchant capabilities
- *
- * Note: RLS policies are defined separately in rls.sql
- */
+export {
+  accounts,
+  sessions,
+  users,
+  verifications,
+} from '../features/auth/schemas';
 
-// ============================================================================
-// BETTER AUTH CANONICAL TABLES
-// ============================================================================
-
-/**
- * users — Global user identity managed by Better Auth
- * Canonical record for all authentication providers (phone, email, oauth)
- */
-export const users = pgTable(
-  'users',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    email: varchar('email', { length: 255 }).unique(),
-    emailVerified: boolean('email_verified').default(false),
-    name: varchar('name', { length: 255 }),
-    image: varchar('image', { length: 255 }),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
-  },
-  (t) => ({
-    emailIdx: uniqueIndex('users_email_idx').on(t.email),
-  }),
-);
-
-/**
- * accounts — Better Auth account linking
- * Links users to authentication providers (phone-number, email-password, oauth)
- * Single user can have multiple accounts (e.g., phone + email)
- */
-export const accounts = pgTable(
-  'accounts',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    accountType: varchar('account_type', { length: 50 }).notNull(), // 'phone-number', 'email-password', 'oauth'
-    provider: varchar('provider', { length: 100 }).notNull(),
-    providerAccountId: varchar('provider_account_id', { length: 255 }).notNull(),
-    refreshToken: text('refresh_token'),
-    accessToken: text('access_token'),
-    expiresAt: timestamp('expires_at'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
-  },
-  (t) => ({
-    userIdIdx: uniqueIndex('accounts_user_id_provider_idx').on(t.userId, t.provider),
-  }),
-);
-
-/**
- * sessions — Better Auth session management
- * Token-based sessions with expiration
- */
-export const sessions = pgTable(
-  'sessions',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    token: varchar('token', { length: 255 }).notNull().unique(),
-    expiresAt: timestamp('expires_at').notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
-  },
-  (t) => ({
-    userIdIdx: uniqueIndex('sessions_user_id_idx').on(t.userId),
-    tokenIdx: uniqueIndex('sessions_token_idx').on(t.token),
-  }),
-);
-
-/**
- * verifications — Better Auth email/phone verification
- * OTP and verification token storage
- */
-export const verifications = pgTable(
-  'verifications',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    identifier: varchar('identifier', { length: 255 }).notNull(), // email or phone
-    value: varchar('value', { length: 255 }).notNull(), // OTP or token
-    expiresAt: timestamp('expires_at').notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-  },
-  (t) => ({
-    identifierIdx: uniqueIndex('verifications_identifier_idx').on(t.identifier),
-  }),
-);
-
-// ============================================================================
-// CAPABILITY TABLES - DOMAIN: CUSTOMERS & MERCHANTS
-// ============================================================================
-
-/**
- * customer_accounts — Customer-specific capability record
- * Links a user to their customer role within FIDELIY
- * One customer account per user (UNIQUE constraint)
- *
- * RLS: Customer can only SELECT their own record
- * Derived from: authenticated user.id
- */
-export const customerAccounts = pgTable(
-  'customer_accounts',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id')
-      .notNull()
-      .unique()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    phoneNumber: varchar('phone_number', { length: 20 }),
-    phoneVerified: boolean('phone_verified').default(false).notNull(),
-    joinedAt: timestamp('joined_at').defaultNow().notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
-  },
-  (t) => ({
-    userIdIdx: uniqueIndex('customer_accounts_user_id_idx').on(t.userId),
-  }),
-);
-
-/**
- * merchant_accounts — Merchant-specific capability record
- * Links a user to their merchant role within FIDELIY
- * One merchant account per user (UNIQUE constraint)
- *
- * RLS: Merchant can only SELECT their own record
- * Derived from: authenticated user.id
- */
-export const merchantAccounts = pgTable(
-  'merchant_accounts',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id')
-      .notNull()
-      .unique()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    businessName: varchar('business_name', { length: 255 }),
-    emailVerified: boolean('email_verified').default(false).notNull(),
-    registeredAt: timestamp('registered_at').defaultNow().notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
-  },
-  (t) => ({
-    userIdIdx: uniqueIndex('merchant_accounts_user_id_idx').on(t.userId),
-  }),
-);
-
-// ============================================================================
-// DOMAIN: BUSINESSES & BRANCHES - Merchant Ownership & Tenant Isolation
-// ============================================================================
-
-/**
- * businesses — Physical or logical business entities owned by a merchant
- * Multiple businesses can be owned by a single merchant
- *
- * RLS: Merchant can only SELECT businesses where businessId's merchant is the authenticated user
- * Derived from: merchantId → merchant_accounts.user_id
- */
-export const businesses = pgTable(
-  'businesses',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    merchantId: uuid('merchant_id')
-      .notNull()
-      .references(() => merchantAccounts.id, { onDelete: 'cascade' }),
-    name: varchar('name', { length: 255 }).notNull(),
-    description: text('description'),
-    branchCount: integer('branch_count').default(0).notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
-  },
-  (t) => ({
-    merchantIdIdx: uniqueIndex('businesses_merchant_id_idx').on(t.merchantId),
-  }),
-);
-
-/**
- * branches — Individual physical locations of a business
- * Each branch has a unique QR code for customer scanning
- *
- * RLS: Merchant can only SELECT branches of their businesses
- * Derived from: businessId → businesses.merchantId → merchant_accounts.user_id
- */
-export const branches = pgTable(
-  'branches',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    businessId: uuid('business_id')
-      .notNull()
-      .references(() => businesses.id, { onDelete: 'cascade' }),
-    name: varchar('name', { length: 255 }).notNull(),
-    address: varchar('address', { length: 255 }),
-    phone: varchar('phone', { length: 20 }),
-    qrCodeId: varchar('qr_code_id', { length: 255 }).notNull().unique(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
-  },
-  (t) => ({
-    businessIdIdx: uniqueIndex('branches_business_id_idx').on(t.businessId),
-    qrCodeIdIdx: uniqueIndex('branches_qr_code_id_idx').on(t.qrCodeId),
-  }),
-);
-
-// ============================================================================
-// RELATIONSHIPS (Drizzle ORM relations for lazy loading)
-// ============================================================================
+export {
+  customerAccounts,
+  customerBusinessMemberships,
+  membershipLifecycleEvents,
+  customerQrCredentials,
+  membershipStatusEnum,
+  membershipEventTypeEnum,
+} from '../features/customers/schemas';
+export { businesses, branches, merchantAccounts } from '../features/merchants/schemas';
+export {
+  programs,
+  programConfigurations,
+  programTypeEnum,
+  programConfigurationTypeEnum,
+  programStatusEnum,
+} from '../features/programs/schemas';
+export {
+  loyaltyTransactions,
+  loyaltyActivityEntries,
+  loyaltyTransactionCategoryEnum,
+  loyaltyActivityTypeEnum,
+} from '../features/loyalty/schemas';
 
 export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
   sessions: many(sessions),
   customerAccount: many(customerAccounts),
   merchantAccount: many(merchantAccounts),
-}));
-
-export const customerAccountsRelations = relations(
-  customerAccounts,
-  ({ one }) => ({
-    user: one(users, {
-      fields: [customerAccounts.userId],
-      references: [users.id],
-    }),
-  }),
-);
-
-export const merchantAccountsRelations = relations(
-  merchantAccounts,
-  ({ one, many }) => ({
-    user: one(users, {
-      fields: [merchantAccounts.userId],
-      references: [users.id],
-    }),
-    businesses: many(businesses),
-  }),
-);
-
-export const businessesRelations = relations(businesses, ({ one, many }) => ({
-  merchant: one(merchantAccounts, {
-    fields: [businesses.merchantId],
-    references: [merchantAccounts.id],
-  }),
-  branches: many(branches),
-}));
-
-export const branchesRelations = relations(branches, ({ one }) => ({
-  business: one(businesses, {
-    fields: [branches.businessId],
-    references: [businesses.id],
-  }),
 }));
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
@@ -295,3 +68,127 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+export const customerAccountsRelations = relations(customerAccounts, ({ one, many }) => ({
+  user: one(users, {
+    fields: [customerAccounts.userId],
+    references: [users.id],
+  }),
+  memberships: many(customerBusinessMemberships),
+  qrCredentials: many(customerQrCredentials),
+}));
+
+export const merchantAccountsRelations = relations(merchantAccounts, ({ one, many }) => ({
+  user: one(users, {
+    fields: [merchantAccounts.userId],
+    references: [users.id],
+  }),
+  businesses: many(businesses),
+}));
+
+export const businessesRelations = relations(businesses, ({ one, many }) => ({
+  merchant: one(merchantAccounts, {
+    fields: [businesses.merchantId],
+    references: [merchantAccounts.id],
+  }),
+  branches: many(branches),
+  programs: many(programs),
+  customerMemberships: many(customerBusinessMemberships),
+}));
+
+export const branchesRelations = relations(branches, ({ one }) => ({
+  business: one(businesses, {
+    fields: [branches.businessId],
+    references: [businesses.id],
+  }),
+}));
+
+export const programsRelations = relations(programs, ({ one, many }) => ({
+  business: one(businesses, {
+    fields: [programs.businessId],
+    references: [businesses.id],
+  }),
+  configurations: many(programConfigurations),
+}));
+
+export const programConfigurationsRelations = relations(
+  programConfigurations,
+  ({ one }) => ({
+    program: one(programs, {
+      fields: [programConfigurations.programId],
+      references: [programs.id],
+    }),
+  }),
+);
+
+export const customerBusinessMembershipsRelations = relations(
+  customerBusinessMemberships,
+  ({ one, many }) => ({
+    customerAccount: one(customerAccounts, {
+      fields: [customerBusinessMemberships.customerAccountId],
+      references: [customerAccounts.id],
+    }),
+    business: one(businesses, {
+      fields: [customerBusinessMemberships.businessId],
+      references: [businesses.id],
+    }),
+    lifecycleEvents: many(membershipLifecycleEvents),
+  }),
+);
+
+export const membershipLifecycleEventsRelations = relations(
+  membershipLifecycleEvents,
+  ({ one }) => ({
+    membership: one(customerBusinessMemberships, {
+      fields: [membershipLifecycleEvents.membershipId],
+      references: [customerBusinessMemberships.id],
+    }),
+  }),
+);
+
+export const customerQrCredentialsRelations = relations(
+  customerQrCredentials,
+  ({ one }) => ({
+    customerAccount: one(customerAccounts, {
+      fields: [customerQrCredentials.customerAccountId],
+      references: [customerAccounts.id],
+    }),
+  }),
+);
+
+export const loyaltyTransactionsRelations = relations(
+  loyaltyTransactions,
+  ({ one, many }) => ({
+    business: one(businesses, {
+      fields: [loyaltyTransactions.businessId],
+      references: [businesses.id],
+    }),
+    membership: one(customerBusinessMemberships, {
+      fields: [loyaltyTransactions.membershipId],
+      references: [customerBusinessMemberships.id],
+    }),
+    branch: one(branches, {
+      fields: [loyaltyTransactions.branchId],
+      references: [branches.id],
+    }),
+    merchantAccount: one(merchantAccounts, {
+      fields: [loyaltyTransactions.merchantAccountId],
+      references: [merchantAccounts.id],
+    }),
+    entries: many(loyaltyActivityEntries),
+  }),
+);
+
+export const loyaltyActivityEntriesRelations = relations(
+  loyaltyActivityEntries,
+  ({ one }) => ({
+    transaction: one(loyaltyTransactions, {
+      fields: [loyaltyActivityEntries.transactionId],
+      references: [loyaltyTransactions.id],
+    }),
+    configuration: one(programConfigurations, {
+      fields: [loyaltyActivityEntries.programConfigurationId],
+      references: [programConfigurations.id],
+    }),
+  }),
+);

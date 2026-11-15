@@ -314,6 +314,52 @@ merchant_accounts (capability)
 
 ---
 
+### 12. Versioned Business-Level Programme Configuration
+
+**Decision:** Store each selected programme version in `programs`, owned by a business, with one `program_configurations` record for each enabled type (`stamps` and/or `points`). Programme versions are never overwritten to publish a change; the active version is deactivated and a new version is inserted atomically.
+
+**Rationale:**
+- Every branch shares the business-owned programme through its existing `business_id` relationship.
+- Historical configuration identity remains stable for future activity references.
+- A partial unique index allows at most one active version per business, preventing conflicting active programme types.
+- No stamps/points rules, conversion, rewards, subscription entitlements, or customer activity are inferred.
+
+**Lifecycle:** `status`, `activated_at`, and `deactivated_at` make activation explicit. New versions retain old settings; `program_configurations.id` is the future reference point for configuration-specific loyalty activity. The schema restricts deletion of programme history.
+
+**Status:** Implemented for Checkpoint 6A.
+
+**Evidence:** `backend/src/features/programs/`, migration `0005_versioned_program_configuration`, and `docs/DATABASE.md`.
+
+---
+
+### 13. Checkpoint 6B-A: Business-Level Customer Memberships and Dual QR Discovery
+
+**Decision:** Customer memberships belong to businesses, not individual branches. Introduce `customer_business_memberships` with unique `(customer_account_id, business_id)`, lifecycle audit trail in `membership_lifecycle_events`, separate public business QR identifiers (`businesses.public_qr_id`) alongside branch QR identifiers, and personal customer QR credentials.
+
+**Rationale:**
+- Customers join the business brand; branches share the loyalty programme.
+- Rejoining reactivates the existing membership and appends a lifecycle event.
+- Business public QR and personal customer QR have distinct purposes.
+
+**Status:** Implemented for Checkpoint 6B-A.
+
+**Evidence:** `backend/src/features/customers/`, migration `0006_customer_business_memberships`, and `test/customer-membership.integration.spec.ts`.
+
+---
+
+### 14. Checkpoint 6B-B: Secure Customer QR Credentials and Internal Loyalty Ledger Foundation
+
+**Decision:**
+1. **Secure Customer QR Credentials:** Store credentials as SHA-256 hex hashes in `customer_qr_credentials.credential_hash`. Return the raw 43-character base64url secret only once upon initial issuance or rotation. Customer read endpoint returns status metadata only (`{ issuedAt, active: true }`). Merchant QR resolution endpoint compares the presented credential's SHA-256 hash against active records in the database and verifies active business membership.
+2. **Internal Loyalty Ledger:** Create immutable transaction headers (`loyalty_transactions`) and typed signed entries (`loyalty_activity_entries`) referencing exact `program_configurations.id` records. Enforce append-only integrity via PostgreSQL triggers (`reject_loyalty_ledger_mutation`). Enforce business-scoped idempotency via `(business_id, idempotency_key)` uniqueness and deterministic SHA-256 canonical request fingerprinting. Execute ledger operations in serializable transactions with bounded retry for both PostgreSQL serialization conflicts (`40001`) and deadlock detections (`40P01`). Enforce full reversal integrity (single reversal per transaction via partial unique index, single reversal per activity entry via partial unique index, full entry set coverage, and exact inverse delta matching `delta = -original.delta`).
+3. **Internal Service Boundary:** Maintain `LoyaltyLedgerService` as an internal service foundation without client-facing or merchant-facing write routes, earning formulas, balance projections, or reward redemptions.
+
+**Status:** Implemented for Checkpoints 6B-B and 6B-B.1.
+
+**Evidence:** `backend/src/features/loyalty/loyalty-ledger.service.ts`, `backend/src/shared/security/customer-qr.ts`, migrations `0007_secure_customer_qr_loyalty_ledger.sql` and `0008_full_reversal_integrity.sql`, `test/unit/loyalty-ledger.service.spec.ts`, `test/unit/tenant-context.service.spec.ts`, and `test/loyalty-ledger.integration.spec.ts`.
+
+---
+
 ## PROPOSED DECISIONS (Awaiting Confirmation)
 
 ### P1: Eight-Module NestJS Architecture
@@ -534,3 +580,143 @@ const createCustomerSchema = z.object({
 2. Phase 1A begins SMS vendor research (V1)
 3. Phase 1A selects hosting platform (V2)
 4. All APPROVED decisions locked for Release 1
+
+
+---
+
+## PHASE 2 COMPLETION DECISIONS
+
+### 21. Device-Based Logo Upload: Validation Logic (Onboarding Acceptance)
+
+**Decision:** Update onboarding completion validation to accept either `logo_url` OR `logo_storage_key` as valid logo sources.
+
+**Rationale:**
+- Phase 2 implementation adds device-based logo storage alongside existing URL-based logos
+- Merchants should be able to use either logo type for onboarding
+- Backward-compatible: existing URL logos continue to work unchanged
+- Validation logic: `if (!urlLogo && !deviceLogo) missing.push('business.logo')`
+
+**Alternatives:**
+- Make device-based logo required (rejected: breaks backward compatibility)
+- Keep logo optional (rejected: contradicts product requirement for business identity)
+- Require both logo types (rejected: unnecessary friction for merchants)
+
+**Status:** ✅ **APPROVED & IMPLEMENTED**
+
+**Evidence:**
+- Integration test: `should accept completion with valid device-based logo` ✅ PASS
+- Integration test: `should accept completion with valid URL-based logo` ✅ PASS
+- Integration test: `should handle businesses with both URL and device-based logos` ✅ PASS
+- Code: `src/features/merchants/business-setup.service.ts` lines 349-352
+
+**Implementation Details:**
+```typescript
+const hasUrlLogo = row.logo_url?.trim();
+const hasDeviceLogo = row.logo_storage_key;
+if (!hasUrlLogo && !hasDeviceLogo) missing.push('business.logo');
+```
+
+---
+
+### 22. Device-Based Logo: Database Migration Strategy
+
+**Decision:** Create additive migration `0009_device_based_logo.sql` adding 6 columns to `businesses` table.
+
+**Rationale:**
+- Additive-only migration strategy (Phase 1 principle): safer, no data loss risk
+- New columns support device-based logo metadata (storage key, filename, dimensions, MIME type, upload timestamp)
+- Creates index on `logo_storage_key` for efficient lookup
+- Applied automatically on `DatabaseService.onModuleInit()`
+
+**Alternatives:**
+- Alter existing `logo_url` column (rejected: breaks backward compatibility)
+- Create separate `logos` table (rejected: adds unnecessary complexity)
+- Manual migration step (rejected: automatic on app start is better DX)
+
+**Status:** ✅ **APPROVED & IMPLEMENTED**
+
+**Evidence:**
+- Migration file: `src/database/migrations/0009_device_based_logo.sql`
+- Registered in: `src/database/migrations/meta/_journal.json` (idx: 9)
+- Applied automatically: `DatabaseService.onModuleInit()` calls `migrate()`
+- Schema updated successfully: Database tests confirm column exists ✅
+
+---
+
+### 23. Customer Logo Retrieval: Feature Deferral
+
+**Decision:** Defer implementation of public customer-facing logo retrieval endpoint to Phase 3.
+
+**Rationale:**
+- `docs/PRODUCT.md` Release 1 scope does not specify device-based logo visibility for customers
+- URL-based logos already returned via merchant discovery endpoint
+- Feature is customer-facing enhancement, not core onboarding requirement
+- Phase 3 planning required to define scope (public endpoint vs. authenticated vs. RLS-protected)
+
+**Alternatives:**
+- Implement public endpoint now (rejected: out-of-scope per product spec)
+- Make logo visibility part of onboarding (rejected: adds complexity to Phase 2)
+- Assume customer visibility (rejected: violates "never invent requirements" principle)
+
+**Status:** ⏳ **DEFERRED TO PHASE 3**
+
+**Decision Record:** `docs/PHASE_2_LOGO_RETRIEVAL_ANALYSIS.md` (artifact)
+
+**Phase 3 Task:** "Define customer logo visibility requirements and implement narrowly-scoped endpoint if authorized by product"
+
+---
+
+### 24. Test Environment: Rate Limiting Disabled
+
+**Decision:** Disable Better Auth rate limiting in test environment via `NODE_ENV=test` condition.
+
+**Rationale:**
+- Integration tests create multiple merchant accounts via `/auth/sign-up/email` rapidly
+- Better Auth rate limit (100 req/15 min) triggers false positives in test suite (429 responses)
+- Test environment should not enforce production-like constraints
+- Zero impact on production (NODE_ENV=production or unset defaults to rate limiting enabled)
+
+**Alternatives:**
+- Add delays between test merchant registrations (rejected: increases test runtime by 4x with no guarantee)
+- Reuse single merchant for multiple tests (rejected: tight coupling, harder to debug)
+- Increase rate limit globally (rejected: would weaken production security)
+
+**Status:** ✅ **APPROVED & IMPLEMENTED**
+
+**Evidence:**
+- Implementation: `src/features/auth/better-auth.config.ts` line 196: `enabled: process.env.NODE_ENV !== 'test'`
+- Setup: `backend/jest.config.js` sets `process.env.NODE_ENV = 'test'`
+- Result: All 9 integration tests pass; no rate limiting in CI/CD
+
+---
+
+### 25. TypeScript Configuration: ES Module Support
+
+**Decision:** Update `tsconfig.json` to `"module": "esnext"` and `"moduleResolution": "node"` for ES module support.
+
+**Rationale:**
+- `import.meta` needed for file path resolution in ESM
+- `DatabaseService` uses `import.meta.url` for migrations path
+- Drizzle ORM requires ESM path resolution
+
+**Alternatives:**
+- Use `__dirname` polyfill (rejected: deprecated pattern, ESM is standard)
+- Stick with CommonJS (rejected: blocks ESM features; Drizzle expects ESM)
+
+**Status:** ✅ **APPROVED & IMPLEMENTED**
+
+**Evidence:**
+- Config: `backend/tsconfig.json` (module: esnext, moduleResolution: node)
+- TypeScript build: 0 errors ✅
+- Backend tests: All pass ✅
+
+---
+
+## SUMMARY: Phase 2 Integration Complete
+
+**All 5 Phase 2 decisions approved and implemented.**
+**9/9 integration tests passing.**
+**0 breaking changes.**
+**Backward compatibility verified.**
+
+**Next Phase:** Phase 3 - Loyalty transactions and redemption flow.

@@ -10,8 +10,8 @@
  * - onModuleInit() throws if validation fails
  */
 
-import { AuthService } from '../../src/modules/auth/auth.service';
-import { SessionService } from '../../src/modules/auth/session.service';
+import { AuthService } from '../../src/features/auth/auth.service';
+import { SessionService } from '../../src/features/auth/session.service';
 import { DatabaseService } from '../../src/database/database.service';
 
 describe('Startup Validation - Production Safeguards', () => {
@@ -31,16 +31,18 @@ describe('Startup Validation - Production Safeguards', () => {
 
     // Create mock DatabaseService
     databaseService = {
+      getDb: jest.fn(() => ({ query: jest.fn() })),
       getPool: jest.fn(),
     };
 
-    // Create AuthService with mocked dependencies
-    authService = new AuthService(sessionService, databaseService);
+    // Create AuthService with mocked dependencies in the service's constructor order
+    authService = new AuthService(databaseService, sessionService);
   });
 
   afterEach(() => {
     // Restore original environment
     process.env = originalEnv;
+    jest.restoreAllMocks();
     jest.clearAllMocks();
   });
 

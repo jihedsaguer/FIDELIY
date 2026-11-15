@@ -15,6 +15,62 @@
       "when": 1793830182318,
       "tag": "0001_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793920022096,
+      "tag": "0002_productive_smiling_tiger",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793975651796,
+      "tag": "0003_auth_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793979488724,
+      "tag": "0004_merchant_business_setup",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794004800000,
+      "tag": "0005_versioned_program_configuration",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794005400000,
+      "tag": "0006_customer_business_memberships",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794010000000,
+      "tag": "0007_secure_customer_qr_loyalty_ledger",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794015000000,
+      "tag": "0008_full_reversal_integrity",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1731091800000,
+      "tag": "0009_device_based_logo",
+      "breakpoints": true
     }
   ]
 }

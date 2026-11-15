@@ -101,11 +101,11 @@ describe('Stage 1 Architecture Verification', () => {
   });
 
   describe('Session Validation Middleware Pattern', () => {
-    it('should verify middleware flow: extract token → validate → attach user → next()', () => {
+    it('should verify middleware flow: pass cookie header → validate → attach user → next()', () => {
       const sequence: string[] = [];
 
-      sequence.push('sessionService.extractSessionToken(request)');
-      sequence.push('authService.validateSession(token)');
+      sequence.push('sessionService.extractCookieHeader(request)');
+      sequence.push('authService.validateSession(cookieHeader)');
       sequence.push('request.user = { id: userId }');
       sequence.push('next()');
 
@@ -117,7 +117,7 @@ describe('Stage 1 Architecture Verification', () => {
     it('should verify no-token path: missing token → skip validation → next()', () => {
       const sequence: string[] = [];
 
-      sequence.push('sessionService.extractSessionToken() returns null');
+      sequence.push('sessionService.extractCookieHeader() returns null');
       sequence.push('Skip validation');
       sequence.push('next()');
 

@@ -12,7 +12,7 @@
  * - No connection held (middleware pattern)
  */
 
-import { SessionService } from '../../src/modules/auth/session.service';
+import { SessionService } from '../../src/features/auth/session.service';
 import { SessionValidationMiddleware } from '../../src/shared/middleware/session-validation.middleware';
 import { Request, Response, NextFunction } from 'express';
 
@@ -32,7 +32,7 @@ describe('SessionValidationMiddleware - Session Extraction and Validation', () =
 
     // Create mock SessionService
     sessionService = {
-      extractSessionToken: jest.fn(),
+      extractCookieHeader: jest.fn(),
     };
 
     // Create middleware with mocked AuthService and SessionService
@@ -55,7 +55,7 @@ describe('SessionValidationMiddleware - Session Extraction and Validation', () =
 
   describe('use() middleware method', () => {
     it('should invoke actual use() method and call next()', async () => {
-      sessionService.extractSessionToken.mockReturnValue('valid-token-123');
+      sessionService.extractCookieHeader.mockReturnValue('better-auth.session_token=signed-value; better-auth.session_data=cache-value');
       authService.validateSession.mockResolvedValueOnce({
         userId: 'user-123',
       });
@@ -70,7 +70,7 @@ describe('SessionValidationMiddleware - Session Extraction and Validation', () =
     });
 
     it('should extract session token from request headers', async () => {
-      sessionService.extractSessionToken.mockReturnValue('valid-token-123');
+      sessionService.extractCookieHeader.mockReturnValue('better-auth.session_token=signed-value; better-auth.session_data=cache-value');
       authService.validateSession.mockResolvedValueOnce({
         userId: 'user-123',
       });
@@ -81,11 +81,11 @@ describe('SessionValidationMiddleware - Session Extraction and Validation', () =
         mockNext,
       );
 
-      expect(sessionService.extractSessionToken).toHaveBeenCalledWith(mockRequest);
+      expect(sessionService.extractCookieHeader).toHaveBeenCalledWith(mockRequest);
     });
 
     it('should validate session with authService.validateSession', async () => {
-      sessionService.extractSessionToken.mockReturnValue('valid-token-123');
+      sessionService.extractCookieHeader.mockReturnValue('better-auth.session_token=signed-value; better-auth.session_data=cache-value');
       authService.validateSession.mockResolvedValueOnce({
         userId: 'user-123',
       });
@@ -96,11 +96,11 @@ describe('SessionValidationMiddleware - Session Extraction and Validation', () =
         mockNext,
       );
 
-      expect(authService.validateSession).toHaveBeenCalledWith('valid-token-123');
+      expect(authService.validateSession).toHaveBeenCalledWith('better-auth.session_token=signed-value; better-auth.session_data=cache-value');
     });
 
     it('should attach user principal to request when session is valid', async () => {
-      sessionService.extractSessionToken.mockReturnValue('valid-token-123');
+      sessionService.extractCookieHeader.mockReturnValue('better-auth.session_token=signed-value; better-auth.session_data=cache-value');
       authService.validateSession.mockResolvedValueOnce({
         userId: 'user-123',
       });
@@ -116,7 +116,7 @@ describe('SessionValidationMiddleware - Session Extraction and Validation', () =
     });
 
     it('should not hold connection after middleware completes', async () => {
-      sessionService.extractSessionToken.mockReturnValue('valid-token-123');
+      sessionService.extractCookieHeader.mockReturnValue('better-auth.session_token=signed-value; better-auth.session_data=cache-value');
       authService.validateSession.mockResolvedValueOnce({
         userId: 'user-123',
       });
@@ -137,7 +137,7 @@ describe('SessionValidationMiddleware - Session Extraction and Validation', () =
     });
 
     it('should call next() to pass control to next middleware', async () => {
-      sessionService.extractSessionToken.mockReturnValue('valid-token-123');
+      sessionService.extractCookieHeader.mockReturnValue('better-auth.session_token=signed-value; better-auth.session_data=cache-value');
       authService.validateSession.mockResolvedValueOnce({
         userId: 'user-123',
       });
@@ -152,7 +152,7 @@ describe('SessionValidationMiddleware - Session Extraction and Validation', () =
     });
 
     it('should handle missing token gracefully', async () => {
-      sessionService.extractSessionToken.mockReturnValue(null);
+      sessionService.extractCookieHeader.mockReturnValue(null);
 
       await middleware.use(
         mockRequest as Request,
@@ -165,7 +165,7 @@ describe('SessionValidationMiddleware - Session Extraction and Validation', () =
     });
 
     it('should not set user when validation fails', async () => {
-      sessionService.extractSessionToken.mockReturnValue('invalid-token');
+      sessionService.extractCookieHeader.mockReturnValue('better-auth.session_token=invalid-signature');
       authService.validateSession.mockResolvedValueOnce({
         error: 'Invalid session',
       });
@@ -183,7 +183,7 @@ describe('SessionValidationMiddleware - Session Extraction and Validation', () =
 
   describe('Error handling', () => {
     it('should continue to next() even if token extraction throws', async () => {
-      sessionService.extractSessionToken.mockImplementationOnce(() => {
+      sessionService.extractCookieHeader.mockImplementationOnce(() => {
         throw new Error('Token extraction failed');
       });
 
@@ -197,7 +197,7 @@ describe('SessionValidationMiddleware - Session Extraction and Validation', () =
     });
 
     it('should continue to next() even if validation throws', async () => {
-      sessionService.extractSessionToken.mockReturnValue('valid-token-123');
+      sessionService.extractCookieHeader.mockReturnValue('better-auth.session_token=signed-value');
       authService.validateSession.mockRejectedValueOnce(new Error('Validation error'));
 
       await middleware.use(

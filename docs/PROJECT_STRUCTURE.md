@@ -8,86 +8,44 @@ backend/
 │   ├── main.ts                          # Entry point
 │   ├── app.module.ts                    # Root module
 │   │
-│   ├── modules/
-│   │   ├── auth/                        # Authentication & Better Auth integration
-│   │   │   ├── auth.controller.ts       # Routes: phone verify, email verify, password reset
-│   │   │   ├── auth.service.ts          # Better Auth setup, session validation
-│   │   │   ├── phone-otp.service.ts     # Phone OTP logic (sendOTP callback setup)
-│   │   │   ├── guards/
-│   │   │   │   ├── customer.guard.ts    # @UseGuards(CustomerGuard) - validates phone verification
-│   │   │   │   ├── merchant.guard.ts    # @UseGuards(MerchantGuard) - validates email verification
-│   │   │   │   └── index.ts             # Guard exports
-│   │   │   ├── decorators/
-│   │   │   │   ├── session.decorator.ts # @Session() to inject current session
-│   │   │   │   └── user-type.decorator.ts # @UserType() to inject userType
-│   │   │   └── auth.module.ts
-│   │   │
-│   │   ├── customers/                   # Customer domain
-│   │   │   ├── customers.controller.ts  # Routes: GET /customers/me, POST /customers/:id/profile
-│   │   │   ├── customers.service.ts     # Customer business logic
-│   │   │   ├── dto/
-│   │   │   │   ├── create-customer.dto.ts
-│   │   │   │   └── update-profile.dto.ts
-│   │   │   ├── entities/
-│   │   │   │   └── customer.entity.ts   # Drizzle schema (customers table)
-│   │   │   ├── repository/
-│   │   │   │   └── customers.repository.ts # Data access layer
-│   │   │   └── customers.module.ts
-│   │   │
-│   │   ├── merchants/                   # Merchant domain
+│   ├── features/
+│   │   ├── auth/                        # Better Auth integration and validation
+│   │   │   ├── auth.controller.ts
+│   │   │   ├── auth.service.ts
+│   │   │   ├── auth.module.ts
+│   │   │   ├── session.service.ts
+│   │   │   └── index.ts
+│   │   ├── customers/
+│   │   │   ├── customers.controller.ts
+│   │   │   ├── customers.module.ts
+│   │   │   └── index.ts
+│   │   ├── merchants/
 │   │   │   ├── merchants.controller.ts
-│   │   │   ├── merchants.service.ts
-│   │   │   ├── dto/
-│   │   │   ├── entities/                # merchants, businesses, branches tables
-│   │   │   ├── repository/
-│   │   │   └── merchants.module.ts
-│   │   │
-│   │   ├── programs/                    # Loyalty program configuration
-│   │   │   ├── programs.controller.ts   # Routes: POST /programs, GET /programs/:id
-│   │   │   ├── programs.service.ts      # Program CRUD
-│   │   │   ├── dto/
-│   │   │   ├── entities/                # programs, rewards tables
-│   │   │   ├── repository/
-│   │   │   └── programs.module.ts
-│   │   │
-│   │   ├── loyalty/                     # Core loyalty operations
-│   │   │   ├── loyalty.controller.ts    # Routes: POST /earn, POST /redeem
-│   │   │   ├── loyalty.service.ts       # Coordinates earning/redemption
-│   │   │   ├── earning/
-│   │   │   │   ├── earning.service.ts   # Stamp/point calculation & award
-│   │   │   │   └── earning.repository.ts
-│   │   │   ├── redemption/
-│   │   │   │   ├── redemption.service.ts # Redemption processing & validation
-│   │   │   │   └── redemption.repository.ts
-│   │   │   ├── balances/
-│   │   │   │   ├── balances.service.ts  # Current balance queries
-│   │   │   │   └── balances.repository.ts
-│   │   │   ├── dto/
-│   │   │   ├── entities/                # transactions, balances, redemptionCodes tables
+│   │   │   ├── merchants.module.ts
+│   │   │   └── index.ts
+│   │   ├── programs/
+│   │   │   ├── programs.module.ts
+│   │   │   └── index.ts
+│   │   ├── loyalty/
 │   │   │   └── loyalty.module.ts
-│   │   │
-│   │   ├── admin/                       # Platform administration
-│   │   │   ├── admin.controller.ts
-│   │   │   ├── admin.service.ts
-│   │   │   ├── dto/
+│   │   ├── admin/
 │   │   │   └── admin.module.ts
-│   │   │
-│   │   └── shared/                      # Cross-module utilities
-│   │       ├── guards/                  # (duplicate export for convenience)
-│   │       ├── filters/
-│   │       │   └── http-exception.filter.ts # Global error handling
-│   │       ├── decorators/
-│   │       ├── middleware/
-│   │       │   └── rls-context.middleware.ts # Set RLS context from session
-│   │       ├── database/
-│   │       │   ├── db.ts               # Drizzle db instance
-│   │       │   └── rls.service.ts      # RLS context helpers
-│   │       ├── utils/
-│   │       │   ├── idempotency.ts      # Transaction idempotency
-│   │       │   └── error-handling.ts   # Standardized error responses
-│   │       ├── types/
-│   │       │   └── index.ts            # Shared types
-│   │       └── shared.module.ts
+│   │   └── index.ts                    # Optional barrel file for feature exports
+│   │
+│   ├── shared/                         # Cross-feature infrastructure
+│   │   ├── guards/
+│   │   ├── middleware/
+│   │   ├── database/
+│   │   ├── utils/
+│   │   └── shared.module.ts
+│   │
+│   ├── database/                       # Current schema and migration entry point
+│   │   ├── schema.ts                   # Existing central schema source
+│   │   ├── database.module.ts
+│   │   └── migrations/
+│   │
+│   └── config/                         # Environment and runtime config
+│
 │   │
 │   ├── database/                        # Drizzle ORM schema & migrations
 │   │   ├── schema.ts                    # All table definitions
@@ -114,117 +72,43 @@ backend/
 ```
 frontend/
 ├── src/
-│   ├── main.tsx                         # Entry point
-│   ├── App.tsx                          # Root component
-│   ├── index.css                        # Global styles
-│   │
-│   ├── features/                        # Feature-based organization
-│   │   ├── auth/                        # Authentication & sign-up flows
-│   │   │   ├── components/
-│   │   │   │   ├── PhoneSignUp.tsx      # Phone OTP sign-up
-│   │   │   │   ├── EmailSignUp.tsx      # Merchant email/password
-│   │   │   │   ├── PhoneVerification.tsx # OTP verification
-│   │   │   │   ├── PasswordReset.tsx    # Merchant password reset
-│   │   │   │   └── SessionProvider.tsx  # Session context
-│   │   │   ├── hooks/
-│   │   │   │   ├── useAuth.ts           # Custom hook for session & auth methods
-│   │   │   │   └── usePhone.ts          # Phone OTP hook
+│   ├── main.tsx                         # React root and providers
+│   ├── app/
+│   │   ├── store.ts                     # Redux store and RTK Query middleware
+│   │   ├── hooks.ts                     # Typed Redux hooks
+│   │   ├── providers.tsx                # Redux and auth providers
+│   │   └── routes/
+│   │       ├── index.tsx                # URL-to-page mapping and lazy imports
+│   │       ├── paths.ts                 # Central route paths
+│   │       └── RouteGuards.tsx          # Session and capability checks
+│   ├── services/api/baseApi.ts          # Credentialed RTK Query base API
+│   ├── components/
+│   │   ├── layout/PublicLayout.tsx
+│   │   └── ui/                          # Shared feedback, loading, and buttons
+│   ├── features/
+│   │   ├── auth/                        # Session, OTP and merchant sign-in
+│   │   │   ├── api/authApi.ts
 │   │   │   ├── pages/
-│   │   │   │   ├── SignInPage.tsx
-│   │   │   │   ├── SignUpPage.tsx
-│   │   │   │   └── VerifyPage.tsx
-│   │   │   ├── types/
-│   │   │   ├── api/
-│   │   │   │   └── authClient.ts        # Better Auth client methods
-│   │   │   └── index.ts                 # Feature exports
-│   │   │
-│   │   ├── customer-dashboard/          # Customer-specific UI
-│   │   │   ├── components/
-│   │   │   │   ├── ProgramCard.tsx      # Display program info
-│   │   │   │   ├── BalanceDisplay.tsx   # Stamps, points balance
-│   │   │   │   ├── RewardsList.tsx      # Available rewards
-│   │   │   │   ├── TransactionHistory.tsx
-│   │   │   │   └── QRScanner.tsx        # Scan merchant QR
+│   │   │   ├── types/auth.types.ts
+│   │   │   └── AuthProvider.tsx
+│   │   ├── business-onboarding/         # Guided merchant setup
+│   │   │   ├── api/businessOnboardingApi.ts
+│   │   │   ├── components/OnboardingStepForm.tsx
 │   │   │   ├── pages/
-│   │   │   │   ├── CustomerDashboard.tsx
-│   │   │   │   ├── ProgramDetail.tsx
-│   │   │   │   └── RedeemReward.tsx
-│   │   │   ├── hooks/
-│   │   │   │   ├── useCustomerBalances.ts
-│   │   │   │   └── useCustomerPrograms.ts
-│   │   │   ├── api/
-│   │   │   │   └── customerAPI.ts
-│   │   │   └── index.ts
-│   │   │
-│   │   ├── merchant-dashboard/          # Merchant-specific UI
-│   │   │   ├── components/
-│   │   │   │   ├── ProgramForm.tsx      # Create/edit program
-│   │   │   │   ├── ProgramStats.tsx     # Program metrics
-│   │   │   │   ├── CustomerList.tsx
-│   │   │   │   ├── PurchaseForm.tsx     # Record purchase
-│   │   │   │   └── RedemptionApproval.tsx
-│   │   │   ├── pages/
-│   │   │   │   ├── MerchantDashboard.tsx
-│   │   │   │   ├── CreateProgram.tsx
-│   │   │   │   └── ManageProgram.tsx
-│   │   │   ├── hooks/
-│   │   │   │   ├── useMerchantPrograms.ts
-│   │   │   │   └── useMerchantMetrics.ts
-│   │   │   ├── api/
-│   │   │   │   └── merchantAPI.ts
-│   │   │   └── index.ts
-│   │   │
-│   │   └── admin/                       # Admin interface (simple Phase 1)
-│   │       ├── components/
-│   │       ├── pages/
-│   │       ├── api/
-│   │       └── index.ts
-│   │
-│   ├── shared/                          # Shared across features
-│   │   ├── components/
-│   │   │   ├── Layout.tsx               # Main layout wrapper
-│   │   │   ├── Navigation.tsx           # Header/sidebar
-│   │   │   ├── Button.tsx               # shadcn/ui Button (via Storybook if needed)
-│   │   │   ├── Input.tsx
-│   │   │   ├── Card.tsx
-│   │   │   ├── Modal.tsx
-│   │   │   ├── Toast.tsx                # Notifications
-│   │   │   └── Loading.tsx
-│   │   ├── hooks/
-│   │   │   ├── useApi.ts                # Axios wrapper with error handling
-│   │   │   ├── useQuery.ts              # React Query wrapper
-│   │   │   └── useLocalStorage.ts
-│   │   ├── api/
-│   │   │   └── client.ts                # Axios instance, interceptors
-│   │   ├── types/
-│   │   │   ├── api.ts                   # Shared API types
-│   │   │   ├── user.ts                  # User & session types
-│   │   │   └── index.ts
-│   │   ├── utils/
-│   │   │   ├── validation.ts            # Zod schemas
-│   │   │   ├── formatting.ts            # Date, currency formatting
-│   │   │   └── constants.ts             # App constants
-│   │   ├── styles/
-│   │   │   ├── tailwind.config.js       # Tailwind + shadcn/ui config
-│   │   │   └── globals.css
-│   │   └── index.ts
-│   │
-│   └── pages/                           # Route pages (if not using feature-based)
-│       ├── LandingPage.tsx
-│       ├── NotFound.tsx
-│       └── index.ts
-│
-├── public/                              # Static assets
-│   ├── images/
-│   ├── icons/
-│   └── manifest.json                    # PWA manifest
-│
-├── .env.example                         # Template environment variables
-├── vite.config.ts                       # Vite configuration
-├── tsconfig.json
+│   │   │   ├── styles/business-onboarding.css
+│   │   │   └── types/businessOnboarding.types.ts
+│   │   ├── merchant/
+│   │   │   ├── api/merchantApi.ts
+│   │   │   ├── pages/MerchantDashboardPage.tsx
+│   │   │   └── types/merchant.types.ts
+│   │   └── customer/pages/CustomerDashboardPage.tsx
+│   ├── styles/global.css
+│   └── test-utils/
 ├── package.json
-└── index.html
+└── vite.config.ts
 ```
+
+Server state and requests are managed by RTK Query endpoint definitions injected into the shared `baseApi`; the store registers its reducer and middleware once. Authentication and business setup use Better Auth cookies and the existing `/api` Vite proxy. Onboarding step state remains local to its page, so there is no duplicate server data or unnecessary feature slice.
 
 ## API Response Format (Backend)
 
