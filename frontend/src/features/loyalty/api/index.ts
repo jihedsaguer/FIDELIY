@@ -1,0 +1,56 @@
+// Export from individual files to avoid name conflicts
+export {
+  useDiscoverBusinessQuery,
+  useLookupCustomerMutation,
+  useJoinBusinessMutation,
+  type PublicBusiness,
+  type PublicProgram,
+  type PublicBranch,
+  type PublicBusinessDiscoveryResponse,
+  type PublicCustomerLookupDto,
+  type PublicCustomerInfo,
+  type CustomerMembership as PublicCustomerMembership,
+  type PublicCustomerLookupResponse,
+  type PublicJoinBusinessDto,
+  type PublicCustomer,
+  type PublicMembership,
+  type PublicSession,
+  type PublicJoinBusinessResponse,
+} from './publicApi';
+
+export {
+  useResolveCustomerForTransactionMutation,
+  useCalculateEarningsMutation,
+  useCreateLoyaltyTransactionMutation,
+  useRedeemRewardMutation,
+  type CustomerForTransaction,
+  type MembershipForTransaction,
+  type Balance,
+  type ProgramForTransaction,
+  type RewardForTransaction as MerchantRewardInfo,
+  type CustomerForTransactionResponse,
+  type ResolveCustomerForTransactionDto,
+  type CalculateEarningsDto,
+  type EarningsCalculation,
+  type CalculateEarningsResponse,
+  type CreateLoyaltyTransactionDto,
+  type CreateLoyaltyTransactionResponse,
+  type RedeemRewardDto,
+  type RedeemRewardResponse,
+} from './merchantTransactionApi';
+
+export {
+  useGetMembershipsWithBalancesQuery,
+  useGetMembershipQuery,
+  useGetTransactionHistoryQuery,
+  useGetAvailableRewardsQuery,
+  useGetPersonalQrQuery,
+  useIssuePersonalQrMutation,
+  useRotatePersonalQrMutation,
+  type CustomerMembership,
+  type MembershipDetail,
+  type TransactionHistoryItem,
+  type RewardInfo as CustomerRewardInfo,
+  type PersonalQrCredential,
+} from './customerApi';
+

@@ -136,6 +136,12 @@ export default function MerchantDashboardPage() {
               <span>Configure loyalty programme</span>
               <strong>{currentProgram ? 'Edit' : 'Create'}</strong>
             </a>
+            {business && (
+              <a className="task-row" href={paths.merchantScan}>
+                <span>Scan Customer QR</span>
+                <strong>Process sale</strong>
+              </a>
+            )}
           </div>
         </Section>
 

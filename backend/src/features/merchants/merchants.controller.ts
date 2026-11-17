@@ -33,7 +33,18 @@ import { LogoUploadResponseDto } from './dto/logo-upload.dto';
 import { BusinessSetupService } from './business-setup.service';
 import { BranchService } from './branch.service';
 import { MerchantCustomerService } from './merchant-customer.service';
+import { MerchantTransactionService } from './merchant-transaction.service';
 import { ResolveCustomerQrDto } from './dto/resolve-customer-qr.dto';
+import {
+  ResolveCustomerForTransactionDto,
+  CalculateEarningsDto,
+  CreateLoyaltyTransactionDto,
+  RedeemRewardDto,
+  CustomerForTransactionResponse,
+  CalculateEarningsResponse,
+  CreateLoyaltyTransactionResponse,
+  RedeemRewardResponse,
+} from './dto/merchant-transaction.dto';
 
 /**
  * Merchant profile and owner-scoped business setup endpoints.
@@ -44,6 +55,7 @@ export class MerchantsController {
     private readonly businessSetupService: BusinessSetupService,
     private readonly branchService: BranchService,
     private readonly merchantCustomers: MerchantCustomerService,
+    private readonly merchantTransactions: MerchantTransactionService,
   ) {}
 
   /**
@@ -135,6 +147,62 @@ export class MerchantsController {
     @Body() input: ResolveCustomerQrDto,
   ) {
     return this.merchantCustomers.resolveCustomerQr(user.id, input.credential);
+  }
+
+  /**
+   * Resolve a customer QR for a loyalty transaction.
+   * Returns customer info, balance, programme details, and eligible rewards.
+   */
+  @Post('customers/resolve-for-transaction')
+  @UseGuards(MerchantGuard)
+  resolveCustomerForTransaction(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() input: ResolveCustomerForTransactionDto,
+  ): Promise<CustomerForTransactionResponse> {
+    return this.merchantTransactions.resolveCustomerForTransaction(
+      user.id,
+      input.qrCredential,
+      input.branchId,
+    );
+  }
+
+  /**
+   * Calculate loyalty earnings for a purchase amount.
+   * Returns the stamps and points that would be earned.
+   */
+  @Post('transactions/calculate-earnings')
+  @UseGuards(MerchantGuard)
+  calculateEarnings(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() input: CalculateEarningsDto,
+  ): Promise<CalculateEarningsResponse> {
+    return this.merchantTransactions.calculateEarnings(user.id, input);
+  }
+
+  /**
+   * Create a loyalty transaction for a customer.
+   * Records stamps and/or points earned from a purchase.
+   */
+  @Post('transactions')
+  @UseGuards(MerchantGuard)
+  createLoyaltyTransaction(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() input: CreateLoyaltyTransactionDto,
+  ): Promise<CreateLoyaltyTransactionResponse> {
+    return this.merchantTransactions.createLoyaltyTransaction(user.id, input);
+  }
+
+  /**
+   * Redeem a reward for a customer.
+   * Deducts the reward cost from the customer's balance.
+   */
+  @Post('transactions/redeem-reward')
+  @UseGuards(MerchantGuard)
+  redeemReward(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() input: RedeemRewardDto,
+  ): Promise<RedeemRewardResponse> {
+    return this.merchantTransactions.redeemReward(user.id, input);
   }
 
   /**

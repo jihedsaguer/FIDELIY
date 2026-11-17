@@ -1,0 +1,1 @@
+import{o as e}from"./index-BecRv5do.js";var t=e();function n({error:e,success:n,notice:r,children:i}){let a=e||n||r;return a?(0,t.jsxs)(`div`,{className:e?`form-feedback error`:n?`form-feedback success`:`form-feedback notice`,role:e?`alert`:`status`,children:[a,` `,i]}):null}export{n as t};
