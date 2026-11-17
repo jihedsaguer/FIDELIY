@@ -14,6 +14,8 @@ const MerchantDashboardPage = lazy(() => import('../../features/merchant/pages/M
 const MerchantBranchesPage = lazy(() => import('../../features/merchant/pages/MerchantBranchesPage'));
 const MerchantProgramsPage = lazy(() => import('../../features/merchant/pages/MerchantProgramsPage'));
 const BusinessOnboardingRoute = lazy(() => import('../../features/business-onboarding/pages/BusinessOnboardingRoute'));
+const PublicQrLandingPage = lazy(() => import('../../features/loyalty/pages/PublicQrLandingPage'));
+const MerchantQrScannerPage = lazy(() => import('../../features/loyalty/pages/MerchantQrScannerPage'));
 
 function NotFoundPage() {
   return <PublicLayout><section className="panel"><h1>Page not found</h1><a href={paths.home}>Return home</a></section></PublicLayout>;
@@ -28,6 +30,10 @@ export default function AppRoutes() {
           <Route path={paths.customerLogin} element={<CustomerLoginPage />} />
           <Route path={paths.merchantLogin} element={<MerchantAuthPage mode="login" />} />
           <Route path={paths.merchantRegister} element={<MerchantAuthPage mode="register" />} />
+          
+          {/* Public QR landing page - no auth required */}
+          <Route path={paths.publicQr} element={<PublicQrLandingPage />} />
+          
           <Route element={<ProtectedRoute role="customer"><AppLayout workspace="customer" /></ProtectedRoute>}>
             <Route path={paths.customerDashboard} element={<CustomerDashboardPage />} />
             <Route path="/customer/dashboard" element={<Navigate to={paths.customerDashboard} replace />} />
@@ -38,6 +44,7 @@ export default function AppRoutes() {
             <Route path={paths.merchantBranches} element={<MerchantBranchesPage />} />
             <Route path={paths.merchantPrograms} element={<MerchantProgramsPage />} />
             <Route path={paths.merchantOnboarding} element={<BusinessOnboardingRoute />} />
+            <Route path={paths.merchantScan} element={<MerchantQrScannerPage />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

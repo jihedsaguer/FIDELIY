@@ -10,6 +10,7 @@ import { businesses, branches, merchantAccounts } from '../features/merchants/sc
 import {
   programs,
   programConfigurations,
+  rewards,
 } from '../features/programs/schemas';
 import {
   loyaltyActivityEntries,
@@ -37,6 +38,7 @@ export { businesses, branches, merchantAccounts } from '../features/merchants/sc
 export {
   programs,
   programConfigurations,
+  rewards,
   programTypeEnum,
   programConfigurationTypeEnum,
   programStatusEnum,

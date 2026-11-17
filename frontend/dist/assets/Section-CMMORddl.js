@@ -1,0 +1,1 @@
+import{o as e}from"./index-BecRv5do.js";var t=e();function n({title:e,subtitle:n,children:r,level:i=2}){return(0,t.jsxs)(`section`,{className:`workspace-section`,children:[(0,t.jsx)(i===1?`h1`:i===2?`h2`:`h3`,{className:`workspace-section-title`,children:e}),n&&(0,t.jsx)(`p`,{className:`workspace-section-subtitle`,children:n}),r]})}export{n as t};

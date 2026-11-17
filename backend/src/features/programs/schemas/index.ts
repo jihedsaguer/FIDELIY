@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   check,
   index,
   integer,
@@ -90,6 +91,42 @@ export const programConfigurations = pgTable(
     settingsObject: check(
       'program_configurations_settings_object',
       sql`jsonb_typeof(settings) = 'object'`,
+    ),
+  }),
+);
+
+
+export const rewards = pgTable(
+  'rewards',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    programId: uuid('program_id')
+      .notNull()
+      .references(() => programs.id, { onDelete: 'cascade' }),
+    name: varchar('name', { length: 255 }).notNull(),
+    description: varchar('description', { length: 1000 }),
+    pointsCost: integer('points_cost').notNull().default(0),
+    stampsCost: integer('stamps_cost'),
+    isActive: boolean('is_active').notNull().default(true),
+    maxRedemptions: integer('max_redemptions'),
+    currentRedemptions: integer('current_redemptions').notNull().default(0),
+    validFrom: timestamp('valid_from'),
+    validUntil: timestamp('valid_until'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    programIdIdx: index('rewards_program_id_idx').on(table.programId),
+    activeIdx: index('rewards_active_idx').on(table.programId).where(sql`is_active = true`),
+    pointsCostPositive: check('rewards_points_cost_positive', sql`points_cost >= 0`),
+    stampsCostNonNegative: check('rewards_stamps_cost_nonnegative', sql`stamps_cost IS NULL OR stamps_cost >= 0`),
+    redemptionsValid: check(
+      'rewards_redemptions_valid',
+      sql`max_redemptions IS NULL OR current_redemptions <= max_redemptions`,
+    ),
+    validDateRange: check(
+      'rewards_valid_date_range',
+      sql`valid_from IS NULL OR valid_until IS NULL OR valid_from <= valid_until`,
     ),
   }),
 );

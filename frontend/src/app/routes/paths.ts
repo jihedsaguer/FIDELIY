@@ -8,4 +8,6 @@ export const paths = {
   merchantOnboarding: '/merchant/onboarding',
   merchantBranches: '/merchant/branches',
   merchantPrograms: '/merchant/programs',
+  publicQr: '/qr/:qrId',
+  merchantScan: '/merchant/scan',
 } as const;

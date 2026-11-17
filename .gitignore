@@ -1,72 +1,87 @@
+# Build outputs
+build/
+out/
+*.log
+
+# Database
+db/*.sql
+postgres-data/
+redis-data/
+*.sqlite
+*.sqlite3
+
 # Dependencies
 node_modules/
-package-lock.json
-yarn.lock
 pnpm-lock.yaml
+yarn.lock
+package-lock.json
+
+# Docker volumes (local development only)
+docker-volumes/
+
+# Drizzle
+.drizzle/
 
 # Environment
+# Ignore all .env files and .env.* files except .env.example
 .env
-.env.*.local
-.env.*.development
-.env.*.production
-.env.local
-.env.development.local
-.env.production.local
-
-# Build outputs
-dist/
-build/
-.next/
-out/
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
 
 # IDE
-.vscode/
 .idea/
-*.swp
-*.swo
-*~
-.DS_Store
+.vscode/
 *.sublime-project
 *.sublime-workspace
+*.swo
+*.swp
+*.temp
+*.tmp
+*~
+.DS_Store
 
 # Logs
 logs/
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+
+# NestJS specific
+cache/
+
+# OS
+Thumbs.db
+
+# Temporary files
+*.temp
+*.tmp
 
 # Testing
 coverage/
 .nyc_output/
 
-# Database
-*.sqlite
-*.sqlite3
-db/*.sql
-
-# Docker volumes (local development only)
-postgres-data/
-redis-data/
-
-# OS
-Thumbs.db
-.DS_Store
-
-# Temporary files
-*.tmp
-*.temp
-.cache/
-
-# NestJS specific
-dist/
-node_modules/
-
-# Drizzle
-drizzle/
-.drizzle/
-
 # Vite
 .vite/
+.next/
+
+# Vibe CLI configuration
+.vibe/
+
+# Graphify configuration and output
+.graphify/
+graphify-out/
+
+# Skills lock file
+skills-lock.json
+
+# Claude local settings
+.claude/settings.local.json
+
+# Kiro local settings (if any)
+.kiro/settings.local.json
+
+# Local overrides
+local.env
+*.local

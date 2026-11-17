@@ -1178,3 +1178,633 @@ h2 { margin: 0; font-size: 1.25rem; line-height: 1.25; }
     font-size: .75rem;
   }
 }
+
+/* ========================================
+   Public QR Landing Page Styles
+   ======================================== */
+
+.qr-landing-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+}
+
+.qr-header {
+  text-align: center;
+  margin-bottom: var(--space-8);
+}
+
+.qr-header h1 {
+  margin: 0;
+  color: var(--color-brand-dark);
+}
+
+.qr-business-card {
+  padding: var(--space-6);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  margin-bottom: var(--space-6);
+  box-shadow: var(--shadow-sm);
+}
+
+.qr-business-logo {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-md);
+}
+
+.qr-business-name {
+  margin: 0 0 var(--space-2);
+  font-size: 1.5rem;
+  color: var(--color-text);
+}
+
+.qr-business-description {
+  margin: 0 0 var(--space-4);
+  color: var(--color-muted);
+  line-height: 1.55;
+}
+
+.qr-business-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.qr-business-count {
+  color: var(--color-muted);
+  font-size: .9rem;
+}
+
+.qr-program-badge {
+  padding: var(--space-1) var(--space-3);
+  color: white;
+  border-radius: var(--radius-sm);
+  font-size: .82rem;
+  font-weight: 600;
+}
+
+.qr-branch-info,
+.qr-program-info {
+  padding: var(--space-4);
+  background: var(--color-subtle);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+}
+
+.qr-branch-info h3,
+.qr-program-info h3 {
+  margin: 0 0 var(--space-2);
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.qr-branch-info p,
+.qr-program-info p {
+  margin: var(--space-1) 0;
+  color: var(--color-text);
+}
+
+.qr-cta {
+  text-align: center;
+  padding: var(--space-4);
+}
+
+.qr-cta p {
+  margin: 0 0 var(--space-4);
+  color: var(--color-muted);
+}
+
+.qr-join-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.qr-form-actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.qr-existing-customer {
+  padding: var(--space-4);
+  text-align: center;
+}
+
+.qr-existing-customer p {
+  margin: 0 0 var(--space-2);
+}
+
+.qr-existing-customer .muted {
+  color: var(--color-muted);
+  font-size: .9rem;
+}
+
+.qr-loading,
+.qr-error,
+.qr-success,
+.qr-error-page {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-6);
+}
+
+.qr-loading p,
+.qr-error p,
+.qr-success p,
+.qr-error-page p {
+  margin: 0 0 var(--space-4);
+  max-width: 400px;
+}
+
+.qr-success h2 {
+  margin: 0 0 var(--space-2);
+  color: var(--color-success);
+}
+
+.qr-error {
+  color: var(--color-danger);
+}
+
+.qr-error a {
+  display: inline-block;
+}
+
+/* Responsive adjustments */
+@media (min-width: 768px) {
+  .qr-landing-page {
+    padding: var(--space-10) var(--space-6);
+  }
+  
+  .qr-business-card {
+    padding: var(--space-10);
+  }
+  
+  .qr-business-logo {
+    width: 100px;
+    height: 100px;
+  }
+}
+
+/* ========================================
+   Merchant QR Scanner Page Styles
+   ======================================== */
+
+.merchant-scan-page {
+  min-height: 100vh;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+}
+
+.scan-header {
+  text-align: center;
+  margin-bottom: var(--space-6);
+}
+
+.scan-header h1 {
+  margin: 0 0 var(--space-2);
+  color: var(--color-brand-dark);
+}
+
+.scan-header p {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.scan-container {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto var(--space-8);
+}
+
+.scan-video-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--color-border);
+}
+
+.scan-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+}
+
+.scan-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.scan-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  border-radius: var(--radius-lg);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.scan-rectangle {
+  position: absolute;
+  top: 25%;
+  left: 25%;
+  right: 25%;
+  bottom: 25%;
+  border: 2px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  background: transparent;
+}
+
+.scan-rectangle::before,
+.scan-rectangle::after {
+  content: '';
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--color-accent);
+}
+
+.scan-rectangle::before {
+  top: -15px;
+  left: -15px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.scan-rectangle::after {
+  bottom: -15px;
+  right: -15px;
+  border-left: none;
+  border-top: none;
+}
+
+.scan-alternative {
+  margin-bottom: var(--space-8);
+}
+
+.scan-alternative p {
+  margin: 0 0 var(--space-3);
+  text-align: center;
+  color: var(--color-muted);
+  font-size: .9rem;
+}
+
+.manual-entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.scan-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+/* Customer Info Card */
+.customer-info-card {
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.customer-info-card h2 {
+  margin: 0 0 var(--space-2);
+  font-size: 1.25rem;
+}
+
+.customer-info-card p {
+  margin: var(--space-1) 0;
+}
+
+/* Balance Card */
+.balance-card {
+  display: flex;
+  gap: var(--space-6);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.balance-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.balance-label {
+  color: var(--color-muted);
+  font-size: .82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.balance-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-brand-dark);
+}
+
+/* Programme Info Card */
+.program-info-card {
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.program-info-card p {
+  margin: var(--space-1) 0;
+}
+
+/* Rewards List */
+.rewards-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.reward-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3);
+  background: var(--color-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease;
+  text-decoration: none;
+}
+
+.reward-card:hover:not(:disabled) {
+  background: #eef8f0;
+  border-color: var(--color-brand);
+}
+
+.reward-card:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+.reward-name {
+  font-weight: 600;
+}
+
+.reward-cost {
+  color: var(--color-muted);
+  font-size: .9rem;
+}
+
+.reward-unavailable {
+  color: var(--color-danger);
+  font-size: .82rem;
+  margin-left: var(--space-2);
+}
+
+/* Earnings Summary */
+.earnings-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.earnings-item {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.earnings-item:last-child {
+  border-bottom: none;
+}
+
+.earnings-item.total {
+  font-weight: 700;
+  color: var(--color-brand-dark);
+}
+
+.earnings-label {
+  color: var(--color-muted);
+}
+
+.earnings-value {
+  font-weight: 600;
+}
+
+/* Success State */
+.scan-success {
+  text-align: center;
+  padding: var(--space-8) var(--space-4);
+}
+
+.scan-success h1 {
+  margin: 0 0 var(--space-4);
+  color: var(--color-success);
+}
+
+.transaction-summary {
+  margin: var(--space-6) 0;
+  padding: var(--space-4);
+  background: var(--color-subtle);
+  border-radius: var(--radius-md);
+  text-align: left;
+}
+
+.transaction-summary p {
+  margin: var(--space-2) 0;
+}
+
+/* Reward Confirm Card */
+.reward-confirm-card {
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.reward-confirm-card h2 {
+  margin: 0 0 var(--space-2);
+  font-size: 1.125rem;
+}
+
+.reward-confirm-card p {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .merchant-scan-page {
+    padding: var(--space-10) var(--space-6);
+  }
+  
+  .scan-container {
+    max-width: 500px;
+  }
+  
+  .balance-card {
+    flex-direction: row;
+    justify-content: center;
+  }
+  
+  .reward-card {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+/* ========================================
+   Customer Dashboard - Loyalty Features
+   ======================================== */
+
+.qr-display {
+  text-align: center;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.qr-code-container {
+  margin: 0 auto var(--space-3);
+}
+
+.qr-code {
+  display: inline-block;
+  background: white;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.qr-hint {
+  margin: 0;
+  font-size: .82rem;
+}
+
+.qr-placeholder {
+  padding: var(--space-6);
+  text-align: center;
+}
+
+/* Membership List */
+.membership-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.membership-card {
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.membership-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.membership-logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  background: var(--color-subtle);
+}
+
+.membership-info h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.membership-info p {
+  margin: var(--space-1) 0 0;
+  font-size: .82rem;
+}
+
+.membership-balance {
+  display: flex;
+  gap: var(--space-6);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--space-2);
+}
+
+.membership-balance .balance-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.membership-balance .balance-label {
+  color: var(--color-muted);
+  font-size: .78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.membership-balance .balance-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-brand-dark);
+}
+
+.membership-date {
+  font-size: .82rem;
+  text-align: right;
+}
+
+/* Mobile responsiveness */
+@media (min-width: 768px) {
+  .membership-balance {
+    flex-direction: row;
+    justify-content: center;
+  }
+}
