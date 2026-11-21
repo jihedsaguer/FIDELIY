@@ -9,12 +9,14 @@ export interface RegistrationResultModalProps {
   result: RegisterCustomerResponse | null;
   onClose: () => void;
   onScanAnother: () => void;
+  onAutoResolve?: () => void;
 }
 
 export function RegistrationResultModal({
   result,
   onClose,
   onScanAnother,
+  onAutoResolve,
 }: RegistrationResultModalProps) {
   const { t } = useI18n();
 
@@ -79,6 +81,12 @@ export function RegistrationResultModal({
             <p className="text-sm text-[var(--text-muted)]">
               {t('customerCanNowScan')}
             </p>
+            
+            {onAutoResolve && (
+              <Button className="w-full" onClick={onAutoResolve}>
+                {t('continueWithThisCustomer')}
+              </Button>
+            )}
           </>
         ) : (
           <>

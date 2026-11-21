@@ -336,6 +336,35 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
     scanner.clearError();
   }
 
+  // Auto-resolve customer after registration for new customers with QR credential
+  function handleAutoResolve() {
+    const result = registrationResult;
+    if (!result || !result.personalQrCredential) {
+      return;
+    }
+
+    // Resolve the newly registered customer using their QR credential
+    setBusy(true);
+    resolveCustomer({ qrCredential: result.personalQrCredential })
+      .unwrap()
+      .then((data) => {
+        scanner.goToResolved({
+          credential: result.personalQrCredential!,
+          customerData: data,
+          branchId: defaultBranchId,
+        });
+        setRegistrationResult(null);
+      })
+      .catch((err) => {
+        const message = (err.data?.error || err.error || t('failedToResolveCustomer')) as string;
+        scanner.setError(message);
+      })
+      .finally(() => {
+        setBusy(false);
+        setShowRegistrationModal(false);
+      });
+  }
+
   // Helper to safely go back to resolved state
   function goBackToResolved() {
     const customerData = scanner.customerData as CustomerForTransactionResponse | undefined;
@@ -518,6 +547,7 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
         result={registrationResult}
         onClose={scanAnother}
         onScanAnother={scanAnother}
+        onAutoResolve={handleAutoResolve}
       />
     </>
   );
