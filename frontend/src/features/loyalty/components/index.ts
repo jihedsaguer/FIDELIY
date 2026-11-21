@@ -7,4 +7,4 @@
 
 export { StampProgress, type StampProgressProps } from './StampProgress';
 export { PointsProgress, type PointsProgressProps } from './PointsProgress';
-export { ProgramTypeLabel, getProgramTypeLabel, type ProgramTypeLabelProps } from './ProgramTypeLabel';
+export { ProgramTypeLabel, getProgramTypeLabel, type ProgramTypeLabelProps, type TranslateFunction } from './ProgramTypeLabel';

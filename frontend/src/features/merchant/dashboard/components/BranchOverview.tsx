@@ -1,5 +1,5 @@
-import { Card } from '@/components/ui';
-import { Store, Crown } from 'lucide-react';
+import { Card, Badge } from '@/components/ui';
+import { Store } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { paths } from '@/app/routes/paths';
 import type { BranchDto } from '@/features/merchant/api/branchApi';
@@ -9,6 +9,10 @@ interface BranchOverviewProps {
   branches: BranchDto[];
 }
 
+/**
+ * BranchOverview - Modernized branch listing component
+ * Uses shadcn/ui Card and Badge components with design tokens
+ */
 export function BranchOverview({ branches }: BranchOverviewProps) {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -25,21 +29,20 @@ export function BranchOverview({ branches }: BranchOverviewProps) {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {branches.slice(0, 3).map((branch, index) => (
-          <Card key={branch.id} className="p-4 cursor-pointer hover:bg-[var(--subtle)]" onClick={() => navigate(paths.merchantBranches)}>
+          <Card key={branch.id} className="p-4 cursor-pointer hover:bg-[var(--subtle)] transition-colors" onClick={() => navigate(paths.merchantBranches)}>
             <div className="flex items-center gap-2">
               <p className="text-[var(--text)] font-medium">{branch.name}</p>
               {index === 0 && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[var(--success-light)] border border-[var(--success)] rounded-full text-[var(--success)] text-xs font-medium">
-                  <Crown className="h-3 w-3" />
+                <Badge variant="brand" size="sm">
                   {t('activeBranch')}
-                </span>
+                </Badge>
               )}
             </div>
             <p className="text-[var(--text-muted)] text-sm mt-1">{branch.address ?? t('notSpecified')}</p>
           </Card>
         ))}
         {branches.length > 3 && (
-          <Card className="p-4 cursor-pointer hover:bg-[var(--subtle)]" onClick={() => navigate(paths.merchantBranches)}>
+          <Card className="p-4 cursor-pointer hover:bg-[var(--subtle)] transition-colors flex items-center justify-center" onClick={() => navigate(paths.merchantBranches)}>
             <p className="text-[var(--brand)] font-medium">+{branches.length - 3} {t('branches')}</p>
           </Card>
         )}

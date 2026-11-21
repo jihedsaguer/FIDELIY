@@ -21,7 +21,7 @@ export function FormFeedback({
   const role = error ? 'alert' : 'status';
   return (
     <div className={className} role={role}>
-      {message} {children}
+      {message}{children}
     </div>
   );
 }

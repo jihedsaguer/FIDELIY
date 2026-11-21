@@ -1,22 +1,31 @@
-/**
- * ProgramEmptyState - Empty state for programmes
- * Used when no programmes exist
- */
+import { useI18n } from '@/shared/i18n/i18n';
 
+/**
+ * ProgramEmptyState - Modernized empty state for programmes
+ * Uses FIDELIY design tokens and translation keys
+ */
 export function ProgramEmptyState() {
+  const { t } = useI18n();
+
   return (
     <div className="empty-state">
       <p className="empty-state-message">
-        You don't have an active loyalty programme yet. Create one to start rewarding your customers.
+        {t('noActiveProgram')}
       </p>
     </div>
   );
 }
 
+/**
+ * ProgramHistoryEmptyState - Modernized empty state for programme history
+ * Uses FIDELIY design tokens and translation keys
+ */
 export function ProgramHistoryEmptyState() {
+  const { t } = useI18n();
+
   return (
     <div className="empty-state">
-      <p className="empty-state-message">No previous programme versions yet.</p>
+      <p className="empty-state-message">{t('noPreviousVersions')}</p>
     </div>
   );
 }

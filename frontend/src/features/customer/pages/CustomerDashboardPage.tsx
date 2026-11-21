@@ -141,6 +141,7 @@ export default function CustomerDashboardPage() {
                   membership={featuredMembership} 
                   isFeatured 
                   onClick={() => navigate(`/customer/memberships/${featuredMembership.id}`)}
+                  t={t}
                 />
               </div>
               
@@ -152,6 +153,7 @@ export default function CustomerDashboardPage() {
                       key={membership.id} 
                       membership={membership}
                       onClick={() => navigate(`/customer/memberships/${membership.id}`)}
+                      t={t}
                     />
                   ))}
                 </div>

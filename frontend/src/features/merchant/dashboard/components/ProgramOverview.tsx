@@ -9,6 +9,10 @@ interface ProgramOverviewProps {
   program?: ProgramDto | null;
 }
 
+/**
+ * ProgramOverview - Modernized loyalty programme summary card
+ * Uses shadcn/ui Card and Button components with design tokens
+ */
 export function ProgramOverview({ program }: ProgramOverviewProps) {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -18,7 +22,7 @@ export function ProgramOverview({ program }: ProgramOverviewProps) {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">
           <div className="h-12 w-12 rounded-[var(--radius-lg)] bg-[var(--glass-brand)] border border-[var(--glass-brand-strong)] flex items-center justify-center">
-            <Award className="h-6 w-6 text-[var(--text)]" />
+            <Award className="h-6 w-6 text-[var(--brand)]" />
           </div>
           <div>
             <h3 className="text-[var(--text)] font-semibold text-lg">{t('loyaltyProgram')}</h3>
@@ -33,7 +37,7 @@ export function ProgramOverview({ program }: ProgramOverviewProps) {
         <div className="bg-[var(--subtle)] rounded-[var(--radius-lg)] p-4">
           <p className="text-[var(--text)] font-medium">{program.name}</p>
           <p className="text-[var(--text-muted)] text-sm">
-            {program.type === 'stamps' ? t('stamps') : t('points')}
+            {program.type === 'stamps' ? t('stamps') : program.type === 'points' ? t('points') : t('hybridProgram')}
           </p>
         </div>
       ) : (

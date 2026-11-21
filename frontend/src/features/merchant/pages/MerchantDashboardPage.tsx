@@ -16,6 +16,13 @@ import {
 } from '../dashboard/components';
 import type { BusinessSetupResponse } from '@/features/business-onboarding/api/businessOnboardingApi';
 
+/**
+ * MerchantDashboardPage - Modernized merchant home screen
+ * - Scan-first workflow with prominent scanner access
+ * - Business/branch context display
+ * - Programme summary
+ * - Uses shadcn/ui components and design tokens
+ */
 export default function MerchantDashboardPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -37,9 +44,9 @@ export default function MerchantDashboardPage() {
     return (
       <main className="flex-1 bg-[var(--surface)] p-4 md:p-8">
         <div className="mx-auto max-w-4xl w-full space-y-6">
-          <div className="h-12 w-full bg-[var(--subtle)] rounded-lg animate-pulse" />
-          <div className="h-48 w-full bg-[var(--subtle)] rounded-lg animate-pulse" />
-          <div className="h-32 w-full bg-[var(--subtle)] rounded-lg animate-pulse" />
+          <div className="h-12 w-full bg-[var(--subtle)] rounded-[var(--radius-lg)] animate-pulse" />
+          <div className="h-48 w-full bg-[var(--subtle)] rounded-[var(--radius-lg)] animate-pulse" />
+          <div className="h-32 w-full bg-[var(--subtle)] rounded-[var(--radius-lg)] animate-pulse" />
         </div>
       </main>
     );
@@ -71,7 +78,7 @@ export default function MerchantDashboardPage() {
             </div>
             <Button
               onClick={() => openScanner()}
-              className="flex-shrink-0 gap-2 bg-[var(--brand)] hover:bg-[var(--brand-strong)] text-white"
+              className="flex-shrink-0 gap-2"
               size="lg"
             >
               <QrCode className="w-5 h-5" />

@@ -17,7 +17,7 @@ import {
   ProgramEmptyState,
   ProgramHistoryEmptyState,
   ProgramCard,
-  EXPIRATION_OPTIONS,
+  getExpirationOptions,
 } from '../programs';
 import { useProgramForm } from '../programs/hooks/useProgramForm';
 
@@ -138,7 +138,7 @@ export default function MerchantProgramsPage() {
   const handleDeactivate = useCallback(async (program: ProgramDto) => {
     try {
       await deactivateProgram(program.id).unwrap();
-      setNotice('Programme deactivated successfully');
+      setNotice(t('success'));
     } catch (err) {
       setError(err instanceof Error ? err.message : t('error'));
     }
@@ -175,7 +175,7 @@ export default function MerchantProgramsPage() {
           <ProgramCardSkeleton />
         </Section>
         
-        <Section title="Programme History" subtitle="Previous programme versions">
+        <Section title={t('programmeHistory')} subtitle={t('previousVersions')}>
           <ProgramCardSkeleton />
           <ProgramCardSkeleton />
         </Section>
@@ -230,6 +230,7 @@ export default function MerchantProgramsPage() {
               showActions
               onDeactivate={handleDeactivate}
               isDeactivating={isDeactivating}
+              t={t}
             />
           ) : (
             <ProgramEmptyState />
@@ -237,11 +238,11 @@ export default function MerchantProgramsPage() {
         </Section>
 
         {/* Programme History Section */}
-        <Section title="Programme History" subtitle="Previous programme versions">
+        <Section title={t('programmeHistory')} subtitle={t('previousVersions')}>
           {programsList.length > 0 ? (
             <div className="program-list">
               {programsList.map((program: ProgramDto) => (
-                <ProgramCard key={program.id} program={program} />
+                <ProgramCard key={program.id} program={program} t={t} />
               ))}
             </div>
           ) : (
@@ -250,7 +251,7 @@ export default function MerchantProgramsPage() {
         </Section>
 
         {/* Create Programme Section */}
-        <Section title={t('createProgram')} subtitle="Set up your rewards system">
+        <Section title={t('createProgram')} subtitle={t('setupRewardsSystem')}>
           {!showCreateForm && (
             <button className="choice-card" onClick={() => setShowCreateForm(true)}>
               <strong>+ {t('createProgram')}</strong>
@@ -264,7 +265,7 @@ export default function MerchantProgramsPage() {
 
                 {/* Programme Metadata Section */}
                 <div className="form-section">
-                  <legend className="form-section-legend">Programme Details</legend>
+                  <legend className="form-section-legend">{t('programmeDetails')}</legend>
                   
                   <div className="form-row">
                     <label htmlFor="program-name">
@@ -300,14 +301,14 @@ export default function MerchantProgramsPage() {
                       id="program-description"
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="Describe your loyalty programme to customers"
+                      placeholder={t('describeYourLoyaltyProgramme')}
                       rows={2}
                     />
                   </div>
 
                   <div className="form-row">
                     <label htmlFor="program-type">
-                      Programme Type <span className="required-marker" aria-label={t('required')}>*</span>
+                      {t('programmeType')} <span className="required-marker" aria-label={t('required')}>*</span>
                     </label>
                     <select
                       id="program-type"
@@ -316,9 +317,9 @@ export default function MerchantProgramsPage() {
                         handleTypeChange(e.target.value as 'stamps' | 'points' | 'both');
                       }}
                     >
-                      <option value="stamps">Stamp Card</option>
-                      <option value="points">Points System</option>
-                      <option value="both">Combined (Stamps + Points)</option>
+                      <option value="stamps">{t('stampCard')}</option>
+                      <option value="points">{t('pointsSystem')}</option>
+                      <option value="both">{t('combined')}</option>
                     </select>
                   </div>
                 </div>
@@ -326,11 +327,11 @@ export default function MerchantProgramsPage() {
                 {/* Stamp Configuration Section */}
                 {(formData.type === 'stamps' || formData.type === 'both') && (
                   <div className="form-section">
-                    <legend className="form-section-legend">Stamp Configuration</legend>
+                    <legend className="form-section-legend">{t('stampsConfiguration')}</legend>
                     
                     <div className="form-row">
                       <label htmlFor="stamp-earning">
-                        Stamps Per Purchase <span className="required-marker" aria-label={t('required')}>*</span>
+                        {t('stampsPerPurchase')} <span className="required-marker" aria-label={t('required')}>*</span>
                       </label>
                       <input
                         id="stamp-earning"
@@ -358,7 +359,7 @@ export default function MerchantProgramsPage() {
 
                     <div className="form-row">
                       <label htmlFor="stamp-reward-name">
-                        Reward Name <span className="required-marker" aria-label={t('required')}>*</span>
+                        {t('rewardName')} <span className="required-marker" aria-label={t('required')}>*</span>
                       </label>
                       <input
                         id="stamp-reward-name"
@@ -384,7 +385,7 @@ export default function MerchantProgramsPage() {
 
                     <div className="form-row">
                       <label htmlFor="stamp-threshold">
-                        Stamps Required for Reward <span className="required-marker" aria-label={t('required')}>*</span>
+                        {t('stampsRequired')} <span className="required-marker" aria-label={t('required')}>*</span>
                       </label>
                       <input
                         id="stamp-threshold"
@@ -411,7 +412,7 @@ export default function MerchantProgramsPage() {
                     </div>
 
                     <div className="form-row">
-                      <label htmlFor="stamp-expiry">Stamp Expiration <span className="muted">({t('optional')})</span></label>
+                      <label htmlFor="stamp-expiry">{t('expiration')} <span className="muted">({t('optional')})</span></label>
                       <select
                         id="stamp-expiry"
                         value={formData.stampExpirationDays ?? ''}
@@ -422,7 +423,7 @@ export default function MerchantProgramsPage() {
                           })
                         }
                       >
-                        {EXPIRATION_OPTIONS.map((opt) => (
+                        {getExpirationOptions(t).map((opt) => (
                           <option key={opt.value} value={opt.value}>
                             {opt.label}
                           </option>
@@ -435,11 +436,11 @@ export default function MerchantProgramsPage() {
                 {/* Points Configuration Section */}
                 {(formData.type === 'points' || formData.type === 'both') && (
                   <div className="form-section">
-                    <legend className="form-section-legend">Points Configuration</legend>
+                    <legend className="form-section-legend">{t('pointsConfiguration')}</legend>
                     
                     <div className="form-row">
                       <label htmlFor="points-per-currency">
-                        Points Per TND <span className="required-marker" aria-label={t('required')}>*</span>
+                        {t('pointsPerTND')} <span className="required-marker" aria-label={t('required')}>*</span>
                       </label>
                       <input
                         id="points-per-currency"
@@ -468,7 +469,7 @@ export default function MerchantProgramsPage() {
 
                     <div className="form-row">
                       <label htmlFor="points-reward-name">
-                        Reward Name <span className="required-marker" aria-label={t('required')}>*</span>
+                        {t('rewardName')} <span className="required-marker" aria-label={t('required')}>*</span>
                       </label>
                       <input
                         id="points-reward-name"
@@ -494,7 +495,7 @@ export default function MerchantProgramsPage() {
 
                     <div className="form-row">
                       <label htmlFor="points-threshold">
-                        Points Required for Reward <span className="required-marker" aria-label={t('required')}>*</span>
+                        {t('pointsRequired')} <span className="required-marker" aria-label={t('required')}>*</span>
                       </label>
                       <input
                         id="points-threshold"
@@ -521,7 +522,7 @@ export default function MerchantProgramsPage() {
                     </div>
 
                     <div className="form-row">
-                      <label htmlFor="points-expiry">Points Expiration <span className="muted">({t('optional')})</span></label>
+                      <label htmlFor="points-expiry">{t('expiration')} <span className="muted">({t('optional')})</span></label>
                       <select
                         id="points-expiry"
                         value={formData.pointsExpirationDays ?? ''}
@@ -532,7 +533,7 @@ export default function MerchantProgramsPage() {
                           })
                         }
                       >
-                        {EXPIRATION_OPTIONS.map((opt) => (
+                        {getExpirationOptions(t).map((opt) => (
                           <option key={opt.value} value={opt.value}>
                             {opt.label}
                           </option>
@@ -545,7 +546,7 @@ export default function MerchantProgramsPage() {
                 {/* Form Actions */}
                 <div className="form-actions">
                   <button type="submit" className="primary-button" disabled={isCreating}>
-                    {isCreating ? 'Creating...' : t('create')}
+                    {isCreating ? t('creating') : t('create')}
                   </button>
                   <button type="button" className="quiet-button" onClick={closeForm}>
                     {t('cancel')}
@@ -554,7 +555,7 @@ export default function MerchantProgramsPage() {
               </form>
 
               {/* Programme Summary Panel - Sticky */}
-              <ProgrammeSummaryPanel formData={formData} />
+              <ProgrammeSummaryPanel formData={formData} t={t} />
             </div>
           )}
         </Section>

@@ -1,5 +1,5 @@
 import type { CustomerMembership } from '../../loyalty/api/customerApi';
-import { StampProgress, PointsProgress, getProgramTypeLabel } from '../../../features/loyalty/components';
+import { StampProgress, PointsProgress, getProgramTypeLabel, type TranslateFunction } from '../../../features/loyalty/components';
 
 /**
  * LoyaltyCard - Visual representation of a customer's loyalty programme membership
@@ -15,6 +15,7 @@ interface LoyaltyCardProps {
   };
   isFeatured?: boolean;
   onClick?: () => void;
+  t?: TranslateFunction;
 }
 
 /**
@@ -28,9 +29,9 @@ interface LoyaltyCardProps {
  * - Points progress (for points programmes)
  * - Join date
  */
-export function LoyaltyCard({ membership, isFeatured = false, onClick }: LoyaltyCardProps) {
-  const programmeLabel = getProgramTypeLabel(membership.programType || 'unknown');
-  const businessName = membership.businessName || 'Business';
+export function LoyaltyCard({ membership, isFeatured = false, onClick, t }: LoyaltyCardProps) {
+  const programmeLabel = getProgramTypeLabel(membership.programType || 'unknown', t);
+  const businessName = membership.businessName || (t ? t('business') : 'Business');
 
   // Join date formatting
   const joinDate = new Date(membership.joinedAt).toLocaleDateString();
@@ -41,14 +42,14 @@ export function LoyaltyCard({ membership, isFeatured = false, onClick }: Loyalty
         isFeatured ? 'border-2 border-[var(--brand)] shadow-md' : ''
       } ${onClick ? 'cursor-pointer hover:bg-[var(--subtle)]' : ''}`}
       onClick={onClick}
-      aria-label={`View details for ${businessName}`}
+      aria-label={t ? `${t('viewDetailsFor')} ${businessName}` : `View details for ${businessName}`}
     >
       <div className="flex items-center gap-4">
         {/* Business logo or initial */}
         {membership.logoUrl && (
           <img 
             src={membership.logoUrl} 
-            alt="Business logo"
+            alt={t ? t('businessLogo') : 'Business logo'}
             className="w-14 h-14 object-cover rounded-[var(--radius-lg)] bg-[var(--subtle)]"
           />
         )}

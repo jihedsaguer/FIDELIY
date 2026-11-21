@@ -70,9 +70,10 @@ const messages = {
     businessProfile: 'Profil de l\'entreprise',
     business: 'Entreprise',
     businessName: "Nom de l'entreprise",
+    businessLogo: 'Logo de l\'entreprise',
+    viewDetailsFor: 'Voir les détails pour',
     businessDescription: 'Description de l\'entreprise',
     businessPhone: 'Téléphone de l\'entreprise',
-    businessLogo: 'Logo de l\'entreprise',
     phoneVisibility: 'Visibilité du téléphone',
     phonePubliclyDisplayed: 'Afficher publiquement',
     phoneKeptPrivate: 'Gardé privé',
@@ -303,6 +304,9 @@ const messages = {
     programmeDescription: 'Description du programme',
     
     /* Programme Configuration */
+    describeYourLoyaltyProgramme: 'Décrivez votre programme de fidélité aux clients',
+    stampsConfiguration: 'Configuration des timbres',
+    pointsConfiguration: 'Configuration des points',
     stampsPerPurchase: 'Timbres par achat',
     rewardName: 'Nom de la récompense',
     stampsRequired: 'Timbres requis pour la récompense',
@@ -310,12 +314,32 @@ const messages = {
     pointsRequired: 'Points requis pour la récompense',
     expiration: 'Expiration',
     noExpiration: 'Pas d\'expiration',
+    days30: '30 jours',
+    days60: '60 jours',
+    days90: '90 jours',
+    days180: '180 jours',
+    year1: '1 an',
+    
+    /* Programme Details */
+    programmeDetails: 'Détails du programme',
+    unnamedProgramme: 'Programme sans nom',
+    thisProgramme: 'ce programme',
+    creating: 'Création en cours...',
+    previewProgramme: 'Aperçu du programme',
     
     /* Programme Status */
     programmeStatus: 'Statut du programme',
     currentProgramme: 'Programme actuel',
     programmeHistory: 'Historique des programmes',
     previousVersions: 'Versions précédentes',
+    noActiveProgram: 'Aucun programme actif',
+    noPreviousVersions: 'Aucune version précédente',
+    notSet: 'Non défini',
+    customerView: 'Vue client',
+    customerViewPreview: 'Aperçu de la vue client',
+    stamp: 'Timbres',
+    point: 'Point',
+    days: 'jours',
     
     /* Actions */
     createLoyaltyProgramme: 'Créer un programme de fidélité',
@@ -345,6 +369,8 @@ const messages = {
     createFirstBranch: 'Créer votre première succursale',
     branchLimitReached: 'Limite de succursales atteinte',
     managingBranches: 'Gérer vos succursales',
+    branchNameRequired: 'Nom de la succursale requis',
+    savingEllipsis: 'Enregistrement...',
     thisActionCannotBeUndone: 'Cette action ne peut pas être annulée',
     saving: 'Enregistrement',
     deleting: 'Suppression',
@@ -432,6 +458,7 @@ const messages = {
     businessDescription: 'وصف المؤسسة',
     businessPhone: 'هاتف المؤسسة',
     businessLogo: 'شعار المؤسسة',
+    viewDetailsFor: 'عرض التفاصيل لـ',
     phoneVisibility: 'ظهور الهاتف',
     phonePubliclyDisplayed: 'عرض علنًا',
     phoneKeptPrivate: 'إبقاء خاصًا',
@@ -637,6 +664,9 @@ const messages = {
     programmeDescription: 'وصف البرنامج',
     
     /* Programme Configuration */
+    describeYourLoyaltyProgramme: 'وصف برنامج ولائك للعملاء',
+    stampsConfiguration: 'إعدادات الطوابع',
+    pointsConfiguration: 'إعدادات النقاط',
     stampsPerPurchase: 'طوابع لكل عملية شراء',
     rewardName: 'اسم المكافأة',
     stampsRequired: 'الطوابع المطلوبة للمكافأة',
@@ -644,14 +674,32 @@ const messages = {
     pointsRequired: 'النقاط المطلوبة للمكافأة',
     expiration: 'انتهاء الصلاحية',
     noExpiration: 'لا انتهاء صلاحية',
+    days30: '30 يوم',
+    days60: '60 يوم',
+    days90: '90 يوم',
+    days180: '180 يوم',
+    year1: '1 سنة',
+    
+    /* Programme Details */
+    programmeDetails: 'تفاصيل البرنامج',
+    unnamedProgramme: 'برنامج بدون اسم',
+    thisProgramme: 'هذا البرنامج',
+    creating: 'جاري الإنشاء...',
+    previewProgramme: 'معاينة البرنامج',
     
     /* Programme Status */
     programmeStatus: 'حالة البرنامج',
     currentProgramme: 'البرنامج الحالي',
     programmeHistory: 'سجل البرامج',
     previousVersions: 'الإصدارات السابقة',
-    
-    /* Actions */
+    noActiveProgram: 'لا يوجد برنامج نشط',
+    noPreviousVersions: 'لا يوجد إصدارات سابقة',
+    notSet: 'غير محدد',
+    customerView: 'عرض العميل',
+    customerViewPreview: 'معاينة عرض العميل',
+    stamp: 'طابع',
+    point: 'نقطة',
+    days: 'أيام',
     createLoyaltyProgramme: 'إنشاء برنامج ولاء',
     setupRewardsSystem: 'إعداد نظام المكافآت',
     deactivateProgramme: 'إلغاء تفعيل البرنامج',
@@ -679,6 +727,8 @@ const messages = {
     createFirstBranch: 'إنشاء أول فرع لك',
     branchLimitReached: 'تم الوصول إلى الحد الأقصى للفروع',
     managingBranches: 'إدارة الفروع',
+    branchNameRequired: 'اسم الفرع مطلوب',
+    savingEllipsis: 'جاري الحفظ...',
     thisActionCannotBeUndone: 'لا يمكن تراجع هذه العملية',
     saving: 'جار الحفظ',
     deleting: 'جار الحذف',
@@ -723,7 +773,7 @@ const messages = {
   },
 } as const;
 
-type MessageKey = keyof (typeof messages)['fr'];
+export type MessageKey = keyof (typeof messages)['fr'];
 type I18nValue = {
   locale: Locale;
   setLocale: (locale: Locale) => void;
