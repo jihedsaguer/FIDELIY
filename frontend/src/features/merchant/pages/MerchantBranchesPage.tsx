@@ -349,19 +349,10 @@ export default function MerchantBranchesPage() {
                 <div className="flex gap-4 pt-4">
                   <Button
                     type="submit"
-                    disabled={isCreating || isUpdating}
+                    isLoading={isCreating || isUpdating}
                     className="flex-1"
                   >
-                    {isCreating || isUpdating ? (
-                      <>
-                        <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2" />
-                        {t('savingEllipsis')}
-                      </>
-                    ) : editingBranch ? (
-                      t('updateBranch')
-                    ) : (
-                      t('createBranch')
-                    )}
+                    {editingBranch ? t('updateBranch') : t('createBranch')}
                   </Button>
                   <Button
                     type="button"
