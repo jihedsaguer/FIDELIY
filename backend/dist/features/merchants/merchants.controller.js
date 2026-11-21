@@ -23,17 +23,20 @@ const business_setup_service_1 = require("./business-setup.service");
 const branch_service_1 = require("./branch.service");
 const merchant_customer_service_1 = require("./merchant-customer.service");
 const merchant_transaction_service_1 = require("./merchant-transaction.service");
+const merchant_customer_registration_service_1 = require("./merchant-customer-registration.service");
 const resolve_customer_qr_dto_1 = require("./dto/resolve-customer-qr.dto");
+const register_customer_dto_1 = require("./dto/register-customer.dto");
 const merchant_transaction_dto_1 = require("./dto/merchant-transaction.dto");
 /**
  * Merchant profile and owner-scoped business setup endpoints.
  */
 let MerchantsController = class MerchantsController {
-    constructor(businessSetupService, branchService, merchantCustomers, merchantTransactions) {
+    constructor(businessSetupService, branchService, merchantCustomers, merchantTransactions, merchantCustomerRegistration) {
         this.businessSetupService = businessSetupService;
         this.branchService = branchService;
         this.merchantCustomers = merchantCustomers;
         this.merchantTransactions = merchantTransactions;
+        this.merchantCustomerRegistration = merchantCustomerRegistration;
     }
     /**
      * Test endpoint: Get merchant profile.
@@ -83,6 +86,27 @@ let MerchantsController = class MerchantsController {
     }
     resolveCustomerQr(user, input) {
         return this.merchantCustomers.resolveCustomerQr(user.id, input.credential);
+    }
+    /**
+     * Merchant-assisted customer registration.
+     * Creates a customer identity, customer account, membership in the merchant's business,
+     * and generates a personal QR credential.
+     * Does NOT create a customer session or modify the merchant's session.
+     *
+     * Security: Only the SHA-256 hash of QR credentials is stored in the database.
+     * personalQrCredential is returned only for NEW customers (first registration).
+     * For existing customers, it is undefined since the raw credential cannot be
+     * retrieved from the hash. The customer should use their existing QR code.
+     *
+     * Request body: { name, phoneNumber, birthdate? }
+     * Success: 201 Created with customer, membership, and personalQrCredential (if new)
+     * Duplicate phone: 409 Conflict
+     * Invalid input: 400 Bad Request
+     * Unauthorized: 401 Unauthorized
+     * Forbidden (no merchant account/business): 403 Forbidden
+     */
+    async registerCustomer(user, input) {
+        return this.merchantCustomerRegistration.registerCustomer(user.id, input);
     }
     /**
      * Resolve a customer QR for a loyalty transaction.
@@ -278,6 +302,15 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], MerchantsController.prototype, "resolveCustomerQr", null);
 __decorate([
+    (0, common_1.Post)('customers/register'),
+    (0, common_1.UseGuards)(merchant_guard_1.MerchantGuard),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, register_customer_dto_1.RegisterCustomerDto]),
+    __metadata("design:returntype", Promise)
+], MerchantsController.prototype, "registerCustomer", null);
+__decorate([
     (0, common_1.Post)('customers/resolve-for-transaction'),
     (0, common_1.UseGuards)(merchant_guard_1.MerchantGuard),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
@@ -388,6 +421,7 @@ exports.MerchantsController = MerchantsController = __decorate([
     __metadata("design:paramtypes", [business_setup_service_1.BusinessSetupService,
         branch_service_1.BranchService,
         merchant_customer_service_1.MerchantCustomerService,
-        merchant_transaction_service_1.MerchantTransactionService])
+        merchant_transaction_service_1.MerchantTransactionService,
+        merchant_customer_registration_service_1.MerchantCustomerRegistrationService])
 ], MerchantsController);
 //# sourceMappingURL=merchants.controller.js.map

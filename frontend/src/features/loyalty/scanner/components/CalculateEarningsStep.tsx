@@ -3,6 +3,7 @@ import { Card } from '../../../../components/ui/Card';
 import { InputField } from '../../../../components/ui/InputField';
 import { Button } from '../../../../components/ui/Button';
 import { FormFeedback } from '../../../../components/ui/FormFeedback';
+import { useI18n } from '../../../../shared/i18n/i18n';
 import type { CalculateEarningsStepProps } from '../types';
 
 export function CalculateEarningsStep({
@@ -14,14 +15,15 @@ export function CalculateEarningsStep({
   errorMessage,
   onBack,
 }: CalculateEarningsStepProps) {
+  const { t } = useI18n();
   const isStampsProgramme = customerData.program.type === 'stamps';
   const inputType = isStampsProgramme ? 'number' : 'number';
   const inputStep = isStampsProgramme ? '1' : '0.01';
   const inputMin = isStampsProgramme ? '1' : '0.01';
-  const label = isStampsProgramme ? 'Number of Purchases' : 'Amount (TND)';
+  const label = isStampsProgramme ? t('numberOfPurchases') : t('amountTND');
   const hint = isStampsProgramme 
-    ? 'Enter the number of purchases/visits' 
-    : 'Enter the purchase amount in Tunisian Dinars';
+    ? t('enterPurchases') 
+    : t('enterPurchaseAmount');
 
   return (
     <div className="space-y-4">
@@ -56,13 +58,13 @@ export function CalculateEarningsStep({
         disabled={isBusy || !purchaseAmountInput}
         isLoading={isBusy}
       >
-        Calculate Earnings
+        {t('calculateEarnings')}
       </Button>
 
       {errorMessage && <FormFeedback error={errorMessage} />}
 
       <Button variant="ghost" className="w-full" onClick={onBack}>
-        Back to Customer
+        {t('backToCustomer')}
       </Button>
     </div>
   );

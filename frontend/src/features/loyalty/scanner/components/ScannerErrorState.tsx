@@ -1,5 +1,6 @@
 import { AlertCircle } from 'lucide-react';
 import { Button } from '../../../../components/ui/Button';
+import { useI18n } from '../../../../shared/i18n/i18n';
 import type { ScannerErrorStateProps } from '../types';
 
 /**
@@ -14,21 +15,23 @@ export function ScannerErrorState({
   onRetry,
   onClose,
 }: ScannerErrorStateProps) {
+  const { t } = useI18n();
+  
   return (
     <div className="text-center py-8">
       <div className="mx-auto w-20 h-20 rounded-full bg-[var(--danger-light)] flex items-center justify-center mb-6">
         <AlertCircle className="w-10 h-10 text-[var(--danger)]" />
       </div>
-      <h3 className="text-xl font-bold text-[var(--danger)] mb-2">Camera Error</h3>
+      <h3 className="text-xl font-bold text-[var(--danger)] mb-2">{t('cameraError')}</h3>
       <p className="text-[var(--text-muted)] mb-6">
-        {errorMessage || 'Unable to access the camera'}
+        {errorMessage || t('unableToAccessCamera')}
       </p>
       <div className="space-y-3">
         <Button className="w-full" onClick={onRetry}>
-          Try Again
+          {t('tryAgain')}
         </Button>
         <Button variant="outline" className="w-full" onClick={onClose}>
-          Close
+          {t('close')}
         </Button>
       </div>
     </div>

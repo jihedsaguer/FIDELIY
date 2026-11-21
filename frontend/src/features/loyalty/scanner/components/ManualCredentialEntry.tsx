@@ -3,6 +3,7 @@ import { Card } from '../../../../components/ui/Card';
 import { InputField } from '../../../../components/ui/InputField';
 import { Button } from '../../../../components/ui/Button';
 import { FormFeedback } from '../../../../components/ui/FormFeedback';
+import { useI18n } from '../../../../shared/i18n/i18n';
 import type { ManualCredentialEntryProps } from '../types';
 
 /**
@@ -20,6 +21,7 @@ export function ManualCredentialEntry({
   isBusy,
   errorMessage,
 }: ManualCredentialEntryProps) {
+  const { t } = useI18n();
   const isDisabled = isBusy || !credential.trim();
 
   return (
@@ -27,13 +29,13 @@ export function ManualCredentialEntry({
       <div className="flex items-start gap-3">
         <QrCode className="w-5 h-5 text-[var(--text-muted)] mt-1 flex-shrink-0" />
         <div className="flex-1">
-          <h4 className="font-semibold text-[var(--text)] mb-2">Manual Entry</h4>
+          <h4 className="font-semibold text-[var(--text)] mb-2">{t('manualEntry')}</h4>
           <p className="text-[var(--text-muted)] text-sm mb-3">
-            If camera scanning doesn't work, enter the credential directly
+            {t('manualEntryHint')}
           </p>
           <InputField
             id="manual-credential"
-            placeholder="Paste or type the QR credential"
+            placeholder={t('pasteOrTypeCredential')}
             value={credential}
             onChange={(e) => onChange(e.target.value)}
             className="mb-3"
@@ -44,7 +46,7 @@ export function ManualCredentialEntry({
             disabled={isDisabled}
             isLoading={isBusy}
           >
-            Resolve Customer
+            {t('resolveCustomer')}
           </Button>
         </div>
       </div>

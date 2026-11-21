@@ -16,6 +16,7 @@ const logo_upload_service_1 = require("./services/logo-upload.service");
 const shared_module_1 = require("../../shared/shared.module");
 const merchant_customer_service_1 = require("./merchant-customer.service");
 const merchant_transaction_service_1 = require("./merchant-transaction.service");
+const merchant_customer_registration_service_1 = require("./merchant-customer-registration.service");
 const loyalty_module_1 = require("../loyalty/loyalty.module");
 /**
  * Merchant account, business setup, branch management, logo upload, and loyalty transactions.
@@ -33,6 +34,7 @@ exports.MerchantsModule = MerchantsModule = __decorate([
             logo_upload_service_1.LogoUploadService,
             merchant_customer_service_1.MerchantCustomerService,
             merchant_transaction_service_1.MerchantTransactionService,
+            merchant_customer_registration_service_1.MerchantCustomerRegistrationService,
         ],
     })
 ], MerchantsModule);

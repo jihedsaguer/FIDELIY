@@ -1,3 +1,4 @@
+import { useI18n } from '../../../../shared/i18n/i18n';
 import type { ScannerViewportProps } from '../types';
 
 /**
@@ -9,6 +10,8 @@ import type { ScannerViewportProps } from '../types';
  * - Display instruction text
  */
 export const ScannerViewport = ({ videoRef }: ScannerViewportProps) => {
+  const { t } = useI18n();
+  
   return (
     <div className="space-y-6">
       {/* Camera Preview */}
@@ -53,7 +56,7 @@ export const ScannerViewport = ({ videoRef }: ScannerViewportProps) => {
         
         {/* Instruction */}
         <p className="text-center text-[var(--text-muted)] text-sm mt-4">
-          Position customer QR code within the frame
+          {t('positionQRInFrame')}
         </p>
       </div>
     </div>
