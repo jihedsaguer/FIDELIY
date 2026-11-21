@@ -1,0 +1,364 @@
+components/layout/AppLayout.tsx:25:          className="bottom-nav-item text-token-fg-muted hover:text-token-fg-brand transition-colors"
+components/layout/AppLayout.tsx:41:      <div className="relative min-h-screen bg-token-bg-primary">
+components/layout/AppLayout.tsx:44:          <header className="sticky top-0 z-10 bg-token-bg-surface border-b border-token-border-subtle">
+components/layout/AppLayout.tsx:67:    <div className="app-shell app-shell--customer bg-token-bg-primary min-h-screen flex flex-col">
+components/layout/AppLayout.tsx:68:      <header className="app-bar sticky top-0 z-10 bg-token-bg-surface border-b border-token-border-subtle">
+components/layout/AppLayout.tsx:70:          FIDELIY<span className="text-token-fg-brand">.</span>
+components/layout/Sidebar.tsx:72:        className={`fixed left-0 top-0 bottom-0 z-[100] bg-token-bg-surface border-r border-token-border-subtle transition-all duration-300 ease-in-out ${
+components/layout/Sidebar.tsx:77:        <div className="p-4 border-b border-token-border-subtle">
+components/layout/Sidebar.tsx:84:              FIDELIY<span className="text-token-fg-brand">.</span>
+components/layout/Sidebar.tsx:88:            <div className="flex items-center justify-center w-10 h-10 rounded-token-lg bg-token-bg-brand-subtle">
+components/layout/Sidebar.tsx:89:              <span className="text-token-fg-brand font-bold text-xl">F</span>
+components/layout/Sidebar.tsx:104:                className={`flex items-center gap-3 px-3 py-2.5 rounded-token-md transition-all duration-200 ${
+components/layout/Sidebar.tsx:106:                    ? 'bg-token-bg-brand-subtle text-token-fg-brand' 
+components/layout/Sidebar.tsx:107:                    : 'text-token-fg-muted hover:bg-token-bg-hover hover:text-token-fg-primary'
+components/layout/Sidebar.tsx:124:            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-token-md transition-all duration-200 text-left text-token-fg-muted hover:bg-token-bg-hover hover:text-token-fg-primary"
+components/layout/Sidebar.tsx:139:        <div className="mt-auto p-3 border-t border-token-border-subtle">
+components/layout/Sidebar.tsx:142:            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-token-md text-token-fg-danger hover:bg-token-bg-destructive-subtle transition-all duration-200"
+components/layout/Sidebar.tsx:155:          className="absolute -right-3 top-4 w-6 h-6 bg-token-bg-surface border border-token-border-subtle rounded-full flex items-center justify-center shadow-md hover:bg-token-bg-hover transition-colors"
+components/ui/Badge.tsx:14:  default: 'bg-token-bg-subtle text-token-fg-muted',
+components/ui/Badge.tsx:15:  primary: 'bg-token-bg-primary-subtle text-token-fg-brand',
+components/ui/Badge.tsx:16:  secondary: 'bg-token-bg-subtle text-token-fg-primary',
+components/ui/Badge.tsx:17:  success: 'bg-token-bg-success-subtle text-token-fg-success',
+components/ui/Badge.tsx:18:  warning: 'bg-token-bg-warning-subtle text-token-fg-warning',
+components/ui/Badge.tsx:19:  danger: 'bg-token-bg-destructive-subtle text-token-fg-destructive',
+components/ui/Badge.tsx:20:  info: 'bg-token-bg-info-subtle text-token-fg-info',
+components/ui/Badge.tsx:21:  brand: 'bg-token-bg-brand-subtle text-token-fg-brand',
+components/ui/Badge.tsx:38:  default: 'bg-token-fg-muted',
+components/ui/Badge.tsx:39:  primary: 'bg-token-fg-brand',
+components/ui/Badge.tsx:40:  secondary: 'bg-token-fg-primary',
+components/ui/Badge.tsx:41:  success: 'bg-token-fg-success',
+components/ui/Badge.tsx:42:  warning: 'bg-token-fg-warning',
+components/ui/Badge.tsx:43:  danger: 'bg-token-fg-destructive',
+components/ui/Badge.tsx:44:  info: 'bg-token-fg-info',
+components/ui/Badge.tsx:45:  brand: 'bg-token-fg-brand',
+components/ui/Button.tsx:14:  primary: 'bg-token-bg-brand text-token-fg-brand-inverse border border-token-border-brand hover:bg-token-bg-brand-hover',
+components/ui/Button.tsx:15:  secondary: 'bg-token-bg-surface text-token-fg-primary border border-token-border-subtle hover:bg-token-bg-subtle hover:border-token-border-glass',
+components/ui/Button.tsx:16:  accent: 'bg-transparent text-token-fg-brand border border-token-border-glass hover:bg-token-bg-glass',
+components/ui/Button.tsx:17:  ghost: 'bg-transparent text-token-fg-primary border-0 hover:bg-token-bg-hover',
+components/ui/Button.tsx:18:  outline: 'bg-transparent text-token-fg-primary border border-token-border-subtle hover:bg-token-bg-hover hover:border-token-border-glass',
+components/ui/Button.tsx:19:  destructive: 'bg-token-bg-destructive text-token-fg-destructive-inverse border border-token-border-destructive hover:bg-token-bg-destructive-hover',
+components/ui/Button.tsx:30:  font-semibold rounded-token-md
+components/ui/Input.tsx:18:  bg-token-bg-surface
+components/ui/Input.tsx:19:  border border-token-border-subtle
+components/ui/Input.tsx:20:  rounded-token-md
+components/ui/Input.tsx:23:  text-token-fg-primary
+components/ui/Input.tsx:24:  placeholder:text-token-fg-muted
+components/ui/Input.tsx:36:  error: 'border-token-border-destructive focus:ring-token-border-destructive focus:border-token-border-destructive',
+components/ui/Input.tsx:37:  success: 'border-token-border-success focus:ring-token-border-success focus:border-token-border-success',
+components/ui/Input.tsx:40:const iconClasses = 'absolute top-1/2 -translate-y-1/2 text-token-fg-muted';
+components/ui/Input.tsx:68:            className="block text-token-fg-primary text-sm font-medium mb-2"
+components/ui/Input.tsx:99:          <p className="text-token-fg-muted text-xs mt-1">{hint}</p>
+components/ui/Input.tsx:102:          <p className="text-token-fg-destructive text-xs mt-1" id={`${inputId}-error`}>
+components/ui/Modal.tsx:72:        className={`relative w-full ${sizeClasses[size]} bg-token-bg-surface border border-token-border-subtle rounded-token-xl shadow-xl`}
+components/ui/Modal.tsx:81:                className="text-xl font-bold text-token-fg-primary"
+features/customer/components/ActivityList.tsx:51:        <div className="h-10 w-10 rounded-full bg-token-bg-glass border border-token-border-glass flex items-center justify-center">
+features/customer/components/ActivityList.tsx:53:            <span className="text-token-fg-success text-lg font-bold">+</span>
+features/customer/components/ActivityList.tsx:55:            <span className="text-token-fg-destructive text-lg font-bold">-</span>
+features/customer/components/ActivityList.tsx:57:            <Award className="h-5 w-5 text-token-fg-brand" />
+features/customer/components/ActivityList.tsx:62:        <p className="text-token-fg-primary font-medium truncate">
+features/customer/components/ActivityList.tsx:65:        <p className="text-token-fg-muted text-sm">
+features/customer/components/ActivityList.tsx:69:      <div className="text-token-fg-muted text-sm flex items-center gap-1">
+features/customer/components/ActivityList.tsx:105:      <Card className="text-center py-12 px-4 bg-token-bg-subtle border border-token-border-subtle">
+features/customer/components/ActivityList.tsx:106:        <Award className="mx-auto h-12 w-12 text-token-fg-brand mb-4" />
+features/customer/components/ActivityList.tsx:107:        <h3 className="text-token-fg-primary text-lg font-semibold mb-2">
+features/customer/components/ActivityList.tsx:110:        <p className="text-token-fg-muted text-sm">
+features/customer/components/ActivityList.tsx:119:      <Card className="text-center py-12 px-4 bg-token-bg-destructive-subtle border border-token-border-destructive">
+features/customer/components/ActivityList.tsx:120:        <AlertCircle className="mx-auto h-12 w-12 text-token-fg-danger mb-4" />
+features/customer/components/ActivityList.tsx:121:        <h3 className="text-token-fg-danger text-lg font-semibold mb-2">
+features/customer/components/ActivityList.tsx:124:        <p className="text-token-fg-muted text-sm mb-4">
+features/customer/components/ActivityList.tsx:138:      <Card className="text-center py-12 px-4 bg-token-bg-subtle border border-token-border-subtle">
+features/customer/components/ActivityList.tsx:139:        <AlertCircle className="mx-auto h-12 w-12 text-token-fg-muted mb-4" />
+features/customer/components/ActivityList.tsx:140:        <h3 className="text-token-fg-primary text-lg font-semibold mb-2">
+features/customer/components/ActivityList.tsx:143:        <p className="text-token-fg-muted text-sm">
+features/customer/components/LoyaltyCard.tsx:37:    <div className="bg-token-bg-surface border border-token-border-subtle rounded-token-lg p-4 hover:shadow-md transition-shadow">
+features/customer/components/LoyaltyCard.tsx:44:            className="w-14 h-14 object-cover rounded-token-md bg-token-bg-subtle"
+features/customer/components/LoyaltyCard.tsx:48:          <div className="w-14 h-14 rounded-token-md bg-token-bg-brand-subtle flex items-center justify-center">
+features/customer/components/LoyaltyCard.tsx:49:            <span className="text-token-fg-brand font-bold text-lg">
+features/customer/components/LoyaltyCard.tsx:57:          <h3 className="font-bold text-token-fg-primary truncate">
+features/customer/components/LoyaltyCard.tsx:60:          <p className="text-sm text-token-fg-muted">{programmeLabel}</p>
+features/customer/components/LoyaltyCard.tsx:65:      <div className="mt-4 pt-4 border-t border-token-border-subtle">
+features/customer/components/LoyaltyCard.tsx:85:            <p className="text-sm text-token-fg-muted">+{membership.balance.points} points</p>
+features/customer/components/LoyaltyCard.tsx:90:            <p className="text-sm text-token-fg-muted">+{membership.balance.stamps} stamps</p>
+features/customer/components/LoyaltyCard.tsx:113:        <p className="text-xs text-token-fg-muted">
+features/customer/components/ProfileCard.tsx:36:        <div className="h-16 w-16 rounded-full bg-token-bg-glass border border-token-border-glass flex items-center justify-center">
+features/customer/components/ProfileCard.tsx:37:          <User className="h-8 w-8 text-token-fg-primary" />
+features/customer/components/ProfileCard.tsx:41:        <h2 className="text-token-fg-primary text-xl font-semibold">
+features/customer/components/ProfileCard.tsx:44:        <p className="text-token-fg-muted text-sm">{profile.phone}</p>
+features/customer/components/ProfileCard.tsx:55:    <div className="space-y-4 pt-6 border-t border-token-border-subtle">
+features/customer/components/ProfileCard.tsx:57:        <User className="h-5 w-5 text-token-fg-muted" />
+features/customer/components/ProfileCard.tsx:58:        <span className="text-token-fg-primary">{profile.name}</span>
+features/customer/components/ProfileCard.tsx:61:        <Phone className="h-5 w-5 text-token-fg-muted" />
+features/customer/components/ProfileCard.tsx:62:        <span className="text-token-fg-primary">{profile.phone}</span>
+features/customer/components/ProfileCard.tsx:65:        <Mail className="h-5 w-5 text-token-fg-muted" />
+features/customer/components/ProfileCard.tsx:66:        <span className="text-token-fg-primary">{profile.email}</span>
+features/customer/components/ProfileCard.tsx:70:          <Calendar className="h-5 w-5 text-token-fg-muted" />
+features/customer/components/ProfileCard.tsx:71:          <span className="text-token-fg-primary">{profile.birthdate}</span>
+features/customer/components/ProfileCard.tsx:86:    <div className="space-y-4 pt-6 border-t border-token-border-subtle">
+features/customer/components/QRCodeDisplay.tsx:26:      className="flex items-center justify-center w-full h-full bg-token-bg-subtle rounded-token-lg border border-token-border-subtle"
+features/customer/components/QRCodeDisplay.tsx:29:      <QrCode className="w-1/2 h-1/2 text-token-fg-muted" />
+features/customer/components/QRCodeDisplay.tsx:120:        className={`flex items-center justify-center w-full h-full bg-token-bg-subtle rounded-token-lg border border-token-border-subtle ${className}`}
+features/customer/components/QRCodeDisplay.tsx:123:        <QrCode className="w-1/2 h-1/2 text-token-fg-muted animate-pulse" />
+features/customer/components/QRCodeDisplay.tsx:131:        className={`flex items-center justify-center w-full h-full bg-token-bg-destructive-subtle border border-token-border-destructive rounded-token-lg ${className}`}
+features/customer/components/QRCodeDisplay.tsx:134:        <QrCode className="w-1/2 h-1/2 text-token-fg-danger" />
+features/customer/pages/CustomerActivityPage.tsx:28:    <main className="flex-1 bg-token-bg-primary p-token-4 md:p-token-8">
+features/customer/pages/CustomerActivityPage.tsx:31:          <h1 className="text-token-fg-primary text-2xl md:text-3xl font-bold">
+features/customer/pages/CustomerActivityPage.tsx:34:          <p className="text-token-fg-muted mt-1 text-sm md:text-base">
+features/customer/pages/CustomerActivityPage.tsx:40:          <h2 className="text-token-fg-primary text-lg font-semibold mb-4">
+features/customer/pages/CustomerActivityPage.tsx:55:            <p className="text-center text-token-fg-muted text-sm mt-4">
+features/customer/pages/CustomerActivityPage.tsx:64:            className="text-token-fg-muted text-sm hover:text-token-fg-primary transition-colors"
+features/customer/pages/CustomerDashboardPage.tsx:50:            <p className="eyebrow text-token-fg-brand">Customer space</p>
+features/customer/pages/CustomerDashboardPage.tsx:51:            <h1 className="text-token-fg-primary">Welcome, {session?.user.name}</h1>
+features/customer/pages/CustomerDashboardPage.tsx:64:        <p className="panel-copy text-token-fg-muted">You're ready to participate in loyalty programmes with local businesses.</p>
+features/customer/pages/CustomerDashboardPage.tsx:74:                  <div className="bg-token-bg-card rounded-token-lg border border-token-border-subtle p-6 shadow-sm">
+features/customer/pages/CustomerDashboardPage.tsx:78:                    <p className="text-center text-token-fg-muted text-sm">
+features/customer/pages/CustomerDashboardPage.tsx:84:                <div className="bg-token-bg-card rounded-token-lg border border-token-border-subtle p-6 text-center">
+features/customer/pages/CustomerDashboardPage.tsx:108:          <div className="info-card bg-token-bg-subtle border border-token-border-subtle rounded-token-md p-4">
+features/customer/pages/CustomerDashboardPage.tsx:109:            <div className="text-token-fg-muted">
+features/customer/pages/CustomerDashboardPage.tsx:117:        <div className="bg-token-bg-destructive-subtle border border-token-border-destructive rounded-token-md p-4 text-token-fg-danger">
+features/customer/pages/CustomerDashboardPage.tsx:123:        <p role="status" className="text-token-fg-muted">Loading your programmes...</p>
+features/customer/pages/CustomerDashboardPage.tsx:127:        <div className="bg-token-bg-destructive-subtle border border-token-border-destructive rounded-token-md p-4 text-token-fg-danger">
+features/customer/pages/CustomerProfilePage.tsx:41:    <main className="flex-1 bg-token-bg-primary p-token-4 md:p-token-8">
+features/customer/pages/CustomerProfilePage.tsx:44:          <h1 className="text-token-fg-primary text-2xl md:text-3xl font-bold">
+features/customer/pages/CustomerProfilePage.tsx:47:          <p className="text-token-fg-muted mt-1 text-sm md:text-base">
+features/customer/pages/CustomerQRPage.tsx:74:          <h1 className="text-2xl md:text-3xl font-bold text-token-fg-primary">
+features/customer/pages/CustomerQRPage.tsx:77:          <p className="text-token-fg-muted mt-1 text-sm md:text-base">
+features/customer/pages/CustomerQRPage.tsx:83:          <div className="bg-token-bg-card rounded-token-lg border border-token-border-subtle p-6 md:p-10 text-center shadow-sm">
+features/customer/pages/CustomerQRPage.tsx:86:                <div className="mx-auto mb-6 flex h-48 w-48 items-center justify-center rounded-2xl bg-token-bg-glass backdrop-blur-sm border border-token-border-glass">
+features/customer/pages/CustomerQRPage.tsx:89:                <p className="text-token-fg-muted text-sm md:text-base max-w-xs mx-auto">
+features/customer/pages/CustomerQRPage.tsx:96:                <p className="text-token-fg-muted mt-4">Loading QR code...</p>
+features/customer/pages/CustomerQRPage.tsx:99:              <div className="text-token-fg-muted">
+features/customer/pages/CustomerQRPage.tsx:103:                  <p className="text-token-fg-danger text-sm mt-2">
+features/loyalty/components/PointsProgress.tsx:35:      <div className="flex justify-between text-xs text-token-fg-muted mb-1">
+features/loyalty/components/PointsProgress.tsx:39:      <div className="h-2 bg-token-bg-subtle rounded-full overflow-hidden">
+features/loyalty/components/PointsProgress.tsx:41:          className="h-full bg-gradient-to-r from-token-fg-brand to-token-fg-brand-light"
+features/loyalty/components/PointsProgress.tsx:46:        <p className="text-token-fg-muted text-xs mt-2">{label}</p>
+features/loyalty/components/PointsProgress.tsx:49:        <p className="text-token-fg-muted text-xs">
+features/loyalty/components/StampProgress.tsx:42:            ? 'bg-token-fg-brand border-token-fg-brand' 
+features/loyalty/components/StampProgress.tsx:43:            : 'border-token-border-subtle bg-transparent'
+features/loyalty/components/StampProgress.tsx:53:        <p className="text-token-fg-muted text-xs mt-2">{label}</p>
+features/loyalty/components/StampProgress.tsx:56:        <p className="text-token-fg-muted text-xs">
+features/loyalty/scanner/components/CalculateEarningsStep.tsx:28:      <Card className="p-4 bg-token-bg-surface">
+features/loyalty/scanner/components/CalculateEarningsStep.tsx:30:          <User className="w-5 h-5 text-token-fg-muted" />
+features/loyalty/scanner/components/CalculateEarningsStep.tsx:32:            <p className="font-semibold text-token-fg-primary">{customerData.customer.name}</p>
+features/loyalty/scanner/components/CalculateEarningsStep.tsx:33:            <p className="text-token-fg-muted text-sm">
+features/loyalty/scanner/components/ConfirmRedemptionStep.tsx:27:      <Card className="p-4 bg-token-bg-surface">
+features/loyalty/scanner/components/ConfirmRedemptionStep.tsx:29:          <Award className="w-5 h-5 text-token-fg-brand" />
+features/loyalty/scanner/components/ConfirmRedemptionStep.tsx:31:            <p className="font-semibold text-token-fg-primary">Confirm Redemption</p>
+features/loyalty/scanner/components/ConfirmRedemptionStep.tsx:32:            <p className="text-token-fg-muted text-sm">{selectedReward.name}</p>
+features/loyalty/scanner/components/ConfirmRedemptionStep.tsx:38:        <h4 className="font-bold text-token-fg-primary mb-2">{selectedReward.name}</h4>
+features/loyalty/scanner/components/ConfirmRedemptionStep.tsx:39:        <p className="text-token-fg-muted">
+features/loyalty/scanner/components/ConfirmRedemptionStep.tsx:47:          <Award className="w-6 h-6 text-token-fg-brand mx-auto mb-2" />
+features/loyalty/scanner/components/ConfirmRedemptionStep.tsx:48:          <p className="text-token-fg-muted text-sm">Current Stamps</p>
+features/loyalty/scanner/components/ConfirmRedemptionStep.tsx:49:          <p className="text-xl font-bold text-token-fg-primary">
+features/loyalty/scanner/components/ConfirmRedemptionStep.tsx:54:          <Award className="w-6 h-6 text-token-fg-brand mx-auto mb-2" />
+features/loyalty/scanner/components/ConfirmRedemptionStep.tsx:55:          <p className="text-token-fg-muted text-sm">Current Points</p>
+features/loyalty/scanner/components/ConfirmRedemptionStep.tsx:56:          <p className="text-xl font-bold text-token-fg-primary">
+features/loyalty/scanner/components/ConfirmTransactionStep.tsx:17:      <Card className="p-4 bg-token-bg-surface">
+features/loyalty/scanner/components/ConfirmTransactionStep.tsx:19:          <User className="w-5 h-5 text-token-fg-muted" />
+features/loyalty/scanner/components/ConfirmTransactionStep.tsx:21:            <p className="font-semibold text-token-fg-primary">{customerData.customer.name}</p>
+features/loyalty/scanner/components/ConfirmTransactionStep.tsx:22:            <p className="text-token-fg-muted text-sm">Confirm Transaction</p>
+features/loyalty/scanner/components/ConfirmTransactionStep.tsx:29:          <div className="flex justify-between py-2 border-b border-token-border-subtle">
+features/loyalty/scanner/components/ConfirmTransactionStep.tsx:30:            <span className="text-token-fg-muted">Purchase Amount</span>
+features/loyalty/scanner/components/ConfirmTransactionStep.tsx:31:            <span className="font-medium text-token-fg-primary">
+features/loyalty/scanner/components/ConfirmTransactionStep.tsx:37:            <div className="flex justify-between py-2 border-b border-token-border-subtle">
+features/loyalty/scanner/components/ConfirmTransactionStep.tsx:38:              <span className="text-token-fg-muted">Stamps to earn</span>
+features/loyalty/scanner/components/ConfirmTransactionStep.tsx:39:              <span className="font-medium text-token-fg-success">+{earnings.stampsToEarn}</span>
+features/loyalty/scanner/components/ConfirmTransactionStep.tsx:44:            <div className="flex justify-between py-2 border-b border-token-border-subtle">
+features/loyalty/scanner/components/ConfirmTransactionStep.tsx:45:              <span className="text-token-fg-muted">Points to earn</span>
+features/loyalty/scanner/components/ConfirmTransactionStep.tsx:46:              <span className="font-medium text-token-fg-success">+{earnings.pointsToEarn}</span>
+features/loyalty/scanner/components/ConfirmTransactionStep.tsx:50:          <div className="pt-3 border-t border-token-border-subtle">
+features/loyalty/scanner/components/ConfirmTransactionStep.tsx:51:            <div className="flex justify-between font-bold text-token-fg-primary">
+features/loyalty/scanner/components/ConfirmTransactionStep.tsx:55:            <div className="flex justify-between font-bold text-token-fg-primary">
+features/loyalty/scanner/components/CustomerScanResult.tsx:38:      <Card className="p-4 bg-token-bg-success-subtle border border-token-border-success">
+features/loyalty/scanner/components/CustomerScanResult.tsx:40:          <div className="w-10 h-10 rounded-full bg-token-fg-brand-subtle flex items-center justify-center">
+features/loyalty/scanner/components/CustomerScanResult.tsx:41:            <CheckCircle className="w-5 h-5 text-token-fg-brand" />
+features/loyalty/scanner/components/CustomerScanResult.tsx:44:            <h3 className="font-bold text-token-fg-primary">Customer Found</h3>
+features/loyalty/scanner/components/CustomerScanResult.tsx:45:            <p className="text-token-fg-muted">{customerData.customer.name}</p>
+features/loyalty/scanner/components/CustomerScanResult.tsx:53:          <Award className="w-6 h-6 text-token-fg-brand mx-auto mb-2" />
+features/loyalty/scanner/components/CustomerScanResult.tsx:54:          <p className="text-token-fg-muted text-sm">Stamps</p>
+features/loyalty/scanner/components/CustomerScanResult.tsx:55:          <p className="text-2xl font-bold text-token-fg-primary">
+features/loyalty/scanner/components/CustomerScanResult.tsx:60:          <Award className="w-6 h-6 text-token-fg-brand mx-auto mb-2" />
+features/loyalty/scanner/components/CustomerScanResult.tsx:61:          <p className="text-token-fg-muted text-sm">Points</p>
+features/loyalty/scanner/components/CustomerScanResult.tsx:62:          <p className="text-2xl font-bold text-token-fg-primary">
+features/loyalty/scanner/components/CustomerScanResult.tsx:71:          <ShoppingBag className="w-5 h-5 text-token-fg-muted" />
+features/loyalty/scanner/components/CustomerScanResult.tsx:73:            <p className="text-token-fg-muted text-sm">Programme</p>
+features/loyalty/scanner/components/CustomerScanResult.tsx:74:            <p className="font-medium text-token-fg-primary">
+features/loyalty/scanner/components/CustomerScanResult.tsx:77:            <p className="text-token-fg-muted text-xs">
+features/loyalty/scanner/components/CustomerScanResult.tsx:92:            <span className="font-semibold text-token-fg-primary">
+features/loyalty/scanner/components/CustomerScanResult.tsx:95:            <span className="text-token-fg-muted">
+features/loyalty/scanner/components/CustomerScanResult.tsx:105:                  className="w-full text-left bg-token-bg-subtle hover:bg-token-bg-hover border border-token-border-subtle rounded-lg p-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+features/loyalty/scanner/components/CustomerScanResult.tsx:110:                    <span className="font-medium text-token-fg-primary">{reward.name}</span>
+features/loyalty/scanner/components/CustomerScanResult.tsx:111:                    <span className="text-sm text-token-fg-muted">
+features/loyalty/scanner/components/CustomerScanResult.tsx:117:                    <p className="text-xs text-token-fg-danger mt-1">Not enough balance</p>
+features/loyalty/scanner/components/CustomerScanResult.tsx:170:      <div className="mx-auto w-20 h-20 rounded-full bg-token-bg-destructive-subtle flex items-center justify-center mb-6">
+features/loyalty/scanner/components/CustomerScanResult.tsx:171:        <X className="w-10 h-10 text-token-fg-danger" />
+features/loyalty/scanner/components/CustomerScanResult.tsx:173:      <h3 className="text-xl font-bold text-token-fg-danger mb-2">Customer Not Found</h3>
+features/loyalty/scanner/components/CustomerScanResult.tsx:174:      <p className="text-token-fg-muted mb-6">
+features/loyalty/scanner/components/ManualCredentialEntry.tsx:26:    <Card className="p-4 bg-token-bg-surface">
+features/loyalty/scanner/components/ManualCredentialEntry.tsx:28:        <QrCode className="w-5 h-5 text-token-fg-muted mt-1 flex-shrink-0" />
+features/loyalty/scanner/components/ManualCredentialEntry.tsx:30:          <h4 className="font-semibold text-token-fg-primary mb-2">Manual Entry</h4>
+features/loyalty/scanner/components/ManualCredentialEntry.tsx:31:          <p className="text-token-fg-muted text-sm mb-3">
+features/loyalty/scanner/components/RedemptionCompleteStep.tsx:14:      <div className="mx-auto w-20 h-20 rounded-full bg-token-bg-success-subtle flex items-center justify-center">
+features/loyalty/scanner/components/RedemptionCompleteStep.tsx:15:        <CheckCircle className="w-10 h-10 text-token-fg-success" />
+features/loyalty/scanner/components/RedemptionCompleteStep.tsx:18:      <h3 className="text-2xl font-bold text-token-fg-success">Redemption Complete</h3>
+features/loyalty/scanner/components/RedemptionCompleteStep.tsx:19:      <p className="text-token-fg-muted">
+features/loyalty/scanner/components/RedemptionCompleteStep.tsx:26:            <span className="text-token-fg-muted">Customer</span>
+features/loyalty/scanner/components/RedemptionCompleteStep.tsx:27:            <span className="font-medium text-token-fg-primary">{customerData.customer.name}</span>
+features/loyalty/scanner/components/RedemptionCompleteStep.tsx:30:            <span className="text-token-fg-muted">Reward</span>
+features/loyalty/scanner/components/RedemptionCompleteStep.tsx:31:            <span className="font-medium text-token-fg-primary">{redemption.reward.name}</span>
+features/loyalty/scanner/components/RedemptionCompleteStep.tsx:34:            <span className="text-token-fg-muted">Cost</span>
+features/loyalty/scanner/components/RedemptionCompleteStep.tsx:35:            <span className="font-medium text-token-fg-primary">
+features/loyalty/scanner/components/RedemptionCompleteStep.tsx:40:          <div className="border-t border-token-border-subtle pt-3">
+features/loyalty/scanner/components/RedemptionCompleteStep.tsx:42:              <span className="text-token-fg-muted">Balance Before</span>
+features/loyalty/scanner/components/RedemptionCompleteStep.tsx:49:              <span className="text-token-fg-primary">
+features/loyalty/scanner/components/ScannerErrorState.tsx:19:      <div className="mx-auto w-20 h-20 rounded-full bg-token-bg-destructive-subtle flex items-center justify-center mb-6">
+features/loyalty/scanner/components/ScannerErrorState.tsx:20:        <AlertCircle className="w-10 h-10 text-token-fg-danger" />
+features/loyalty/scanner/components/ScannerErrorState.tsx:22:      <h3 className="text-xl font-bold text-token-fg-danger mb-2">Camera Error</h3>
+features/loyalty/scanner/components/ScannerErrorState.tsx:23:      <p className="text-token-fg-muted mb-6">
+features/loyalty/scanner/components/ScannerPermissionState.tsx:18:      <div className="mx-auto w-20 h-20 rounded-full bg-token-bg-destructive-subtle flex items-center justify-center mb-6">
+features/loyalty/scanner/components/ScannerPermissionState.tsx:19:        <Camera className="w-10 h-10 text-token-fg-danger" />
+features/loyalty/scanner/components/ScannerPermissionState.tsx:21:      <h3 className="text-xl font-bold text-token-fg-primary mb-2">Camera Access Required</h3>
+features/loyalty/scanner/components/ScannerPermissionState.tsx:22:      <p className="text-token-fg-muted mb-6">
+features/loyalty/scanner/components/ScannerPermissionState.tsx:33:      <p className="text-xs text-token-fg-muted mt-6 max-w-md mx-auto">
+features/loyalty/scanner/components/ScannerViewport.tsx:16:        <div className="relative aspect-video w-full overflow-hidden rounded-xl border-2 border-token-border-subtle bg-black">
+features/loyalty/scanner/components/ScannerViewport.tsx:55:        <p className="text-center text-token-fg-muted text-sm mt-4">
+features/loyalty/scanner/components/TransactionCompleteStep.tsx:14:      <div className="mx-auto w-20 h-20 rounded-full bg-token-bg-success-subtle flex items-center justify-center">
+features/loyalty/scanner/components/TransactionCompleteStep.tsx:15:        <CheckCircle className="w-10 h-10 text-token-fg-success" />
+features/loyalty/scanner/components/TransactionCompleteStep.tsx:18:      <h3 className="text-2xl font-bold text-token-fg-success">Transaction Complete</h3>
+features/loyalty/scanner/components/TransactionCompleteStep.tsx:19:      <p className="text-token-fg-muted">
+features/loyalty/scanner/components/TransactionCompleteStep.tsx:26:            <span className="text-token-fg-muted">Customer</span>
+features/loyalty/scanner/components/TransactionCompleteStep.tsx:27:            <span className="font-medium text-token-fg-primary">{customerData.customer.name}</span>
+features/loyalty/scanner/components/TransactionCompleteStep.tsx:30:            <span className="text-token-fg-muted">Amount</span>
+features/loyalty/scanner/components/TransactionCompleteStep.tsx:31:            <span className="font-medium text-token-fg-primary">
+features/loyalty/scanner/components/TransactionCompleteStep.tsx:37:              <span className="text-token-fg-muted">Stamps Earned</span>
+features/loyalty/scanner/components/TransactionCompleteStep.tsx:38:              <span className="font-medium text-token-fg-success">+{transaction.stampsEarned}</span>
+features/loyalty/scanner/components/TransactionCompleteStep.tsx:43:              <span className="text-token-fg-muted">Points Earned</span>
+features/loyalty/scanner/components/TransactionCompleteStep.tsx:44:              <span className="font-medium text-token-fg-success">+{transaction.pointsEarned}</span>
+features/loyalty/scanner/components/TransactionCompleteStep.tsx:47:          <div className="border-t border-token-border-subtle pt-3">
+features/loyalty/scanner/components/TransactionCompleteStep.tsx:50:              <span className="text-token-fg-primary">
+features/merchant/components/LoyaltyCardPreview.tsx:50:    <div className="bg-token-bg-surface border border-token-border-subtle rounded-token-lg p-4">
+features/merchant/components/LoyaltyCardPreview.tsx:52:        <p className="text-sm font-semibold text-token-fg-primary">
+features/merchant/components/LoyaltyCardPreview.tsx:58:        <div className="w-14 h-14 rounded-token-md bg-token-bg-brand-subtle flex items-center justify-center flex-shrink-0">
+features/merchant/components/LoyaltyCardPreview.tsx:59:          <span className="text-token-fg-brand font-bold text-lg">
+features/merchant/components/LoyaltyCardPreview.tsx:64:          <h3 className="font-bold text-token-fg-primary truncate">{programmeName}</h3>
+features/merchant/components/LoyaltyCardPreview.tsx:65:          <p className="text-sm text-token-fg-muted">{programmeLabel}</p>
+features/merchant/components/LoyaltyCardPreview.tsx:67:            <p className="text-xs text-token-fg-muted">v{programmeVersion}</p>
+features/merchant/components/LoyaltyCardPreview.tsx:72:      <div className="pt-4 border-t border-token-border-subtle">
+features/merchant/components/LoyaltyCardPreview.tsx:111:        <div className="mt-4 pt-4 border-t border-token-border-subtle">
+features/merchant/components/LoyaltyCardPreview.tsx:112:          <p className="text-sm text-token-fg-muted">{programmeDescription}</p>
+features/merchant/dashboard/components/BranchOverview.tsx:23:        <Store className="h-5 w-5 text-token-fg-primary" />
+features/merchant/dashboard/components/BranchOverview.tsx:24:        <h3 className="text-token-fg-primary text-lg font-semibold">{t('branches')}</h3>
+features/merchant/dashboard/components/BranchOverview.tsx:29:            <p className="text-token-fg-primary font-medium">{branch.name}</p>
+features/merchant/dashboard/components/BranchOverview.tsx:30:            <p className="text-token-fg-muted text-sm">{branch.address ?? t('notSpecified')}</p>
+features/merchant/dashboard/components/BranchOverview.tsx:34:          <Card className="p-4 cursor-pointer hover:bg-token-bg-hover" onClick={() => navigate(paths.merchantBranches)}>
+features/merchant/dashboard/components/BranchOverview.tsx:35:            <p className="text-token-fg-brand font-medium">+{branches.length - 3} {t('branches')}</p>
+features/merchant/dashboard/components/BusinessOverview.tsx:21:        <div className="h-12 w-12 rounded-lg bg-token-bg-glass border border-token-border-glass flex items-center justify-center flex-shrink-0">
+features/merchant/dashboard/components/BusinessOverview.tsx:22:          <Building2 className="h-6 w-6 text-token-fg-primary" />
+features/merchant/dashboard/components/BusinessOverview.tsx:25:          <h3 className="text-token-fg-primary font-semibold text-lg">{business.name}</h3>
+features/merchant/dashboard/components/BusinessOverview.tsx:26:          <p className="text-token-fg-muted text-sm">{t('business')}</p>
+features/merchant/dashboard/components/DashboardHeader.tsx:18:          <h1 className="text-token-fg-primary text-2xl md:text-3xl font-bold">
+features/merchant/dashboard/components/DashboardHeader.tsx:21:          <p className="text-token-fg-muted mt-1 text-sm md:text-base">
+features/merchant/dashboard/components/FeaturesSection.tsx:19:          <div className="h-12 w-12 rounded-lg bg-token-bg-glass border border-token-border-glass flex items-center justify-center mx-auto mb-4">
+features/merchant/dashboard/components/FeaturesSection.tsx:20:            <feature.icon className="h-6 w-6 text-token-fg-primary" />
+features/merchant/dashboard/components/FeaturesSection.tsx:22:          <h3 className="text-token-fg-primary font-semibold text-lg mb-2">{feature.title}</h3>
+features/merchant/dashboard/components/FeaturesSection.tsx:23:          <p className="text-token-fg-muted text-sm">{feature.description}</p>
+features/merchant/dashboard/components/NoBusinessSetup.tsx:12:    <div className="flex flex-col items-center justify-center py-12 px-4 bg-token-bg-subtle rounded-lg border border-token-border-subtle">
+features/merchant/dashboard/components/NoBusinessSetup.tsx:13:      <div className="h-16 w-16 rounded-full bg-token-bg-glass border border-token-border-glass flex items-center justify-center mb-6">
+features/merchant/dashboard/components/NoBusinessSetup.tsx:14:        <Building2 className="h-8 w-8 text-token-fg-muted" />
+features/merchant/dashboard/components/NoBusinessSetup.tsx:16:      <h3 className="text-token-fg-primary text-xl font-semibold mb-2">{t('noBusiness')}</h3>
+features/merchant/dashboard/components/NoBusinessSetup.tsx:17:      <p className="text-token-fg-muted text-center mb-6 max-w-md">{t('setupBusinessToContinue')}</p>
+features/merchant/dashboard/components/ProgramOverview.tsx:20:          <div className="h-12 w-12 rounded-lg bg-token-bg-glass border border-token-border-glass flex items-center justify-center">
+features/merchant/dashboard/components/ProgramOverview.tsx:21:            <Award className="h-6 w-6 text-token-fg-primary" />
+features/merchant/dashboard/components/ProgramOverview.tsx:24:            <h3 className="text-token-fg-primary font-semibold text-lg">{t('loyaltyProgram')}</h3>
+features/merchant/dashboard/components/ProgramOverview.tsx:25:            <p className="text-token-fg-muted text-sm">{t('configureLoyalty')}</p>
+features/merchant/dashboard/components/ProgramOverview.tsx:33:        <div className="bg-token-bg-subtle rounded-lg p-4">
+features/merchant/dashboard/components/ProgramOverview.tsx:34:          <p className="text-token-fg-primary font-medium">{program.name}</p>
+features/merchant/dashboard/components/ProgramOverview.tsx:35:          <p className="text-token-fg-muted text-sm">
+features/merchant/dashboard/components/ProgramOverview.tsx:40:        <div className="bg-token-bg-subtle rounded-lg p-4 text-center">
+features/merchant/dashboard/components/ProgramOverview.tsx:41:          <p className="text-token-fg-muted">{t('noProgram')}</p>
+features/merchant/dashboard/components/QuickActions.tsx:31:      <h3 className="text-token-fg-primary font-semibold text-lg mb-4">{t('quickActions')}</h3>
+features/merchant/dashboard/components/QuickActions.tsx:37:            className="flex flex-col items-center gap-2 p-4 hover:bg-token-bg-subtle rounded-lg transition-colors text-left"
+features/merchant/dashboard/components/QuickActions.tsx:39:            <div className="h-10 w-10 rounded-lg bg-token-bg-glass border border-token-border-glass flex items-center justify-center">
+features/merchant/dashboard/components/QuickActions.tsx:40:              <action.icon className="h-5 w-5 text-token-fg-primary" />
+features/merchant/dashboard/components/QuickActions.tsx:42:            <span className="text-token-fg-primary text-sm font-medium">{action.label}</span>
+features/merchant/dashboard/components/SetupStatus.tsx:21:        <div className={`h-12 w-12 rounded-full flex items-center justify-center ${isComplete ? 'bg-token-bg-success' : 'bg-token-bg-warning'}`}>
+features/merchant/dashboard/components/SetupStatus.tsx:23:            <CheckCircle2 className="h-6 w-6 text-token-fg-success" />
+features/merchant/dashboard/components/SetupStatus.tsx:25:            <Clock className="h-6 w-6 text-token-fg-warning" />
+features/merchant/dashboard/components/SetupStatus.tsx:29:          <h3 className="text-token-fg-primary font-semibold text-lg">{t('setupStatus')}</h3>
+features/merchant/dashboard/components/SetupStatus.tsx:30:          <p className="text-token-fg-muted text-sm">{isComplete ? t('complete') : t('incomplete')}</p>
+features/merchant/dashboard/components/StatCard.tsx:18:        <div className="h-10 w-10 rounded-lg bg-token-bg-glass border border-token-border-glass flex items-center justify-center">
+features/merchant/dashboard/components/StatCard.tsx:19:          <Icon className="h-5 w-5 text-token-fg-primary" />
+features/merchant/dashboard/components/StatCard.tsx:23:      <p className="text-token-fg-muted text-sm">{label}</p>
+features/merchant/dashboard/components/StatCard.tsx:24:      <p className="text-token-fg-primary text-3xl font-bold mt-1">{value}</p>
+features/merchant/pages/MerchantBranchesPage.tsx:145:      <main className="flex-1 bg-token-bg-primary p-token-4 md:p-token-8">
+features/merchant/pages/MerchantBranchesPage.tsx:147:          <div className="h-8 w-64 bg-token-bg-skeleton rounded animate-pulse" />
+features/merchant/pages/MerchantBranchesPage.tsx:150:              <div key={i} className="h-40 bg-token-bg-skeleton rounded animate-pulse" />
+features/merchant/pages/MerchantBranchesPage.tsx:159:    <main className="flex-1 bg-token-bg-primary p-token-4 md:p-token-8">
+features/merchant/pages/MerchantBranchesPage.tsx:165:              <h1 className="text-token-fg-primary text-2xl md:text-3xl font-bold">
+features/merchant/pages/MerchantBranchesPage.tsx:168:              <p className="text-token-fg-muted mt-1 text-sm md:text-base">
+features/merchant/pages/MerchantBranchesPage.tsx:181:            <Building2 className="h-5 w-5 text-token-fg-brand" />
+features/merchant/pages/MerchantBranchesPage.tsx:182:            <h2 className="text-token-fg-primary text-xl font-semibold">{t('yourBusiness')} {t('branches')}</h2>
+features/merchant/pages/MerchantBranchesPage.tsx:187:              <Building2 className="mx-auto h-12 w-12 text-token-fg-muted mb-4" />
+features/merchant/pages/MerchantBranchesPage.tsx:188:              <h3 className="text-token-fg-primary text-lg font-semibold mb-2">
+features/merchant/pages/MerchantBranchesPage.tsx:191:              <p className="text-token-fg-muted text-sm mb-6">
+features/merchant/pages/MerchantBranchesPage.tsx:204:                  className={`p-6 ${confirmDeleteId === branch.id ? 'ring-2 ring-token-border-destructive' : ''}`}
+features/merchant/pages/MerchantBranchesPage.tsx:209:                        <Building2 className="h-5 w-5 text-token-fg-primary" />
+features/merchant/pages/MerchantBranchesPage.tsx:210:                        <h3 className="text-token-fg-primary font-semibold">{branch.name}</h3>
+features/merchant/pages/MerchantBranchesPage.tsx:228:                        <Trash2 className="h-4 w-4 text-token-fg-destructive" />
+features/merchant/pages/MerchantBranchesPage.tsx:235:                      <div className="flex items-center gap-2 text-token-fg-muted text-sm">
+features/merchant/pages/MerchantBranchesPage.tsx:241:                      <div className="flex items-center gap-2 text-token-fg-muted text-sm">
+features/merchant/pages/MerchantBranchesPage.tsx:247:                      <p className="text-token-fg-muted text-sm">No additional information</p>
+features/merchant/pages/MerchantBranchesPage.tsx:253:                    <div className="mt-4 pt-4 border-t border-token-border-subtle">
+features/merchant/pages/MerchantBranchesPage.tsx:255:                        <AlertTriangle className="h-5 w-5 text-token-fg-warning flex-shrink-0" />
+features/merchant/pages/MerchantBranchesPage.tsx:257:                          <p className="text-token-fg-warning text-sm font-medium">
+features/merchant/pages/MerchantBranchesPage.tsx:260:                          <p className="text-token-fg-muted text-xs">
+features/merchant/pages/MerchantBranchesPage.tsx:289:                <h3 className="text-token-fg-primary text-lg font-semibold">
+features/merchant/pages/MerchantBranchesPage.tsx:322:                  <div className="p-3 bg-token-bg-destructive-subtle border border-token-border-destructive rounded-token-md text-token-fg-destructive text-sm">
+features/merchant/pages/MerchantBranchesPage.tsx:328:                  <div className="p-3 bg-token-bg-success-subtle border border-token-border-success rounded-token-md text-token-fg-success text-sm">
+features/merchant/pages/MerchantBranchesPage.tsx:375:          <h3 className="text-token-fg-primary text-lg font-semibold mb-4">{t('backToDashboard')}</h3>
+features/merchant/pages/MerchantCustomersPage.tsx:42:    <main className="flex-1 bg-token-bg-primary p-token-4 md:p-token-8">
+features/merchant/pages/MerchantCustomersPage.tsx:47:              <h1 className="text-token-fg-primary text-2xl md:text-3xl font-bold">
+features/merchant/pages/MerchantCustomersPage.tsx:50:              <p className="text-token-fg-muted mt-1 text-sm md:text-base">
+features/merchant/pages/MerchantCustomersPage.tsx:68:                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-token-fg-muted" />
+features/merchant/pages/MerchantCustomersPage.tsx:87:            <QrCode className="mx-auto h-12 w-12 text-token-fg-muted mb-4" />
+features/merchant/pages/MerchantCustomersPage.tsx:88:            <h3 className="text-token-fg-primary text-lg font-semibold mb-2">
+features/merchant/pages/MerchantCustomersPage.tsx:91:            <p className="text-token-fg-muted text-sm max-w-md mx-auto">
+features/merchant/pages/MerchantCustomersPage.tsx:103:            <Search className="mx-auto h-12 w-12 text-token-fg-muted mb-4" />
+features/merchant/pages/MerchantCustomersPage.tsx:104:            <h3 className="text-token-fg-primary text-lg font-semibold mb-2">
+features/merchant/pages/MerchantCustomersPage.tsx:107:            <p className="text-token-fg-muted text-sm">
+features/merchant/pages/MerchantCustomersPage.tsx:112:          <div className="bg-token-bg-card rounded-token-md border border-token-border-subtle overflow-hidden">
+features/merchant/pages/MerchantCustomersPage.tsx:115:                <tr className="border-b border-token-border-subtle">
+features/merchant/pages/MerchantCustomersPage.tsx:116:                  <th className="text-left p-4 text-token-fg-muted text-sm font-medium uppercase tracking-wider">
+features/merchant/pages/MerchantCustomersPage.tsx:119:                  <th className="text-left p-4 text-token-fg-muted text-sm font-medium uppercase tracking-wider">
+features/merchant/pages/MerchantCustomersPage.tsx:122:                  <th className="text-left p-4 text-token-fg-muted text-sm font-medium uppercase tracking-wider">
+features/merchant/pages/MerchantCustomersPage.tsx:125:                  <th className="text-left p-4 text-token-fg-muted text-sm font-medium uppercase tracking-wider">
+features/merchant/pages/MerchantCustomersPage.tsx:128:                  <th className="text-left p-4 text-token-fg-muted text-sm font-medium uppercase tracking-wider">
+features/merchant/pages/MerchantCustomersPage.tsx:131:                  <th className="text-right p-4 text-token-fg-muted text-sm font-medium uppercase tracking-wider">
+features/merchant/pages/MerchantCustomersPage.tsx:140:                    className="border-b border-token-border-subtle last:border-0 hover:bg-token-bg-hover transition-colors"
+features/merchant/pages/MerchantCustomersPage.tsx:142:                    <td className="p-4 text-token-fg-primary">
+features/merchant/pages/MerchantCustomersPage.tsx:145:                    <td className="p-4 text-token-fg-muted">{customer.phone}</td>
+features/merchant/pages/MerchantCustomersPage.tsx:158:                    <td className="p-4 text-token-fg-muted text-sm">{formatDate(customer.lastVisit)}</td>
+features/merchant/pages/MerchantCustomersPage.tsx:174:            className="text-token-fg-muted text-sm hover:text-token-fg-primary transition-colors"
+features/merchant/pages/MerchantDashboardPage.tsx:80:      <main className="flex-1 bg-token-bg-primary p-token-4 md:p-token-8">
+features/merchant/pages/MerchantDashboardPage.tsx:82:          <div className="h-8 w-64 bg-token-bg-skeleton rounded animate-pulse" />
+features/merchant/pages/MerchantDashboardPage.tsx:85:              <div key={i} className="h-32 bg-token-bg-skeleton rounded animate-pulse" />
+features/merchant/pages/MerchantDashboardPage.tsx:88:          <div className="h-64 bg-token-bg-skeleton rounded animate-pulse" />
+features/merchant/pages/MerchantDashboardPage.tsx:95:    <main className="flex-1 bg-token-bg-primary p-token-4 md:p-token-8">
+features/merchant/pages/MerchantDashboardPage.tsx:125:              <div className="p-4 bg-token-bg-destructive-subtle border-token-border-destructive rounded-lg mt-6">
+features/merchant/pages/MerchantDashboardPage.tsx:126:                <p className="text-token-fg-destructive text-sm">{error}</p>
+features/merchant/pages/MerchantSettingsPage.tsx:61:    <main className="flex-1 bg-token-bg-primary p-token-4 md:p-token-8">
+features/merchant/pages/MerchantSettingsPage.tsx:64:          <h1 className="text-token-fg-primary text-2xl md:text-3xl font-bold">
+features/merchant/pages/MerchantSettingsPage.tsx:67:          <p className="text-token-fg-muted mt-1 text-sm md:text-base">
+features/merchant/pages/MerchantSettingsPage.tsx:73:          <h2 className="text-token-fg-primary text-lg font-semibold pb-2 border-b border-token-border-subtle">
+features/merchant/pages/MerchantSettingsPage.tsx:81:                className="p-4 cursor-pointer hover:bg-token-bg-hover transition-colors"
+features/merchant/pages/MerchantSettingsPage.tsx:86:                    <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-token-bg-glass border border-token-border-glass flex items-center justify-center">
+features/merchant/pages/MerchantSettingsPage.tsx:87:                      <section.icon className="h-5 w-5 text-token-fg-primary" />
+features/merchant/pages/MerchantSettingsPage.tsx:90:                      <h3 className="text-token-fg-primary font-medium">{section.label}</h3>
+features/merchant/pages/MerchantSettingsPage.tsx:91:                      <p className="text-token-fg-muted text-sm">{section.description}</p>
+features/merchant/pages/MerchantSettingsPage.tsx:94:                  <ChevronRight className="h-5 w-5 text-token-fg-muted" />
+features/merchant/pages/MerchantSettingsPage.tsx:102:          <h2 className="text-token-fg-destructive text-lg font-semibold pb-2 border-b border-token-border-subtle">
+features/merchant/pages/MerchantSettingsPage.tsx:108:                <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-token-bg-destructive-subtle border border-token-border-destructive flex items-center justify-center">
+features/merchant/pages/MerchantSettingsPage.tsx:109:                  <LogOut className="h-5 w-5 text-token-fg-destructive" />
+features/merchant/pages/MerchantSettingsPage.tsx:112:                  <h3 className="text-token-fg-destructive font-medium">{t('signOut')}</h3>
+features/merchant/pages/MerchantSettingsPage.tsx:113:                  <p className="text-token-fg-muted text-sm">

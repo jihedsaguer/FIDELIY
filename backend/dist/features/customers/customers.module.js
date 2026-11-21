@@ -11,13 +11,14 @@ const common_1 = require("@nestjs/common");
 const customers_controller_1 = require("./customers.controller");
 const public_customer_controller_1 = require("./public-customer.controller");
 const shared_module_1 = require("../../shared/shared.module");
+const auth_module_1 = require("../auth/auth.module");
 const customer_membership_service_1 = require("./customer-membership.service");
 let CustomersModule = class CustomersModule {
 };
 exports.CustomersModule = CustomersModule;
 exports.CustomersModule = CustomersModule = __decorate([
     (0, common_1.Module)({
-        imports: [shared_module_1.SharedModule],
+        imports: [shared_module_1.SharedModule, auth_module_1.AuthModule],
         controllers: [customers_controller_1.CustomersController, public_customer_controller_1.PublicCustomerController],
         providers: [customer_membership_service_1.CustomerMembershipService],
     })

@@ -1,0 +1,271 @@
+/* FIDELIY Design System - Design Tokens */
+/* This file contains all design tokens for the FIDELIY application */
+
+/* ========================================
+   Color Tokens
+   ======================================== */
+
+/* FIDELIY Orange - Primary Brand Color Scale */
+:root {
+  /* Orange scale - FIDELIY brand colors */
+  --brand-50: #fffbeb;
+  --brand-100: #fef3c7;
+  --brand-200: #fde68a;
+  --brand-300: #fcd34d;
+  --brand-400: #fbbf24;
+  --brand-500: #f59e0b;
+  --brand-600: #d97706;
+  --brand-700: #b45309;
+  --brand-800: #92400e;
+  --brand-900: #78350f;
+  --brand: #f97316;         /* Primary brand color (orange-500 equivalent) */
+  --brand-light: #fcd34d;   /* Light accent */
+  --brand-dark: #ea580c;    /* Dark accent */
+}
+
+/* Light Mode - Warm Neutral Palette */
+:root {
+  /* Background colors */
+  --background: #f7f8f6;    /* Warm off-white */
+  --surface: #ffffff;       /* Pure white for cards */
+  --surface-elevated: #ffffff;
+  
+  /* Text colors */
+  --text: #17231f;          /* Dark slate */
+  --text-muted: #4a5250;    /* Muted slate */
+  --text-subtle: #6b7280;   /* More subtle text */
+  
+  /* Border and divider colors */
+  --border: #dfe7e1;        /* Warm gray border */
+  --border-strong: #cdd3cd;
+  --divider: #dfe7e1;
+  
+  /* Surface colors */
+  --subtle: #f1f5f1;        /* Very light warm gray */
+  --muted: #4a5250;
+  
+  /* Status colors */
+  --success: #265f41;       /* Deep green */
+  --success-light: #eef8f0;
+  --success-subtle: #dcfce7;
+  
+  --warning: #f59e0b;       /* Amber */
+  --warning-light: #fffbeb;
+  --warning-subtle: #fef3c7;
+  
+  --danger: #8e3f36;        /* Deep red */
+  --danger-light: #fff2ef;
+  --danger-subtle: #fee2e2;
+  
+  --info: #0284c7;          /* Blue */
+  --info-light: #eff6ff;
+  --info-subtle: #dbeafe;
+}
+
+/* Dark Mode - Deep Comfortable Surfaces */
+.dark {
+  /* Background colors */
+  --background: #0f1110;    /* Deep charcoal */
+  --surface: #17231f;       /* Dark surface */
+  --surface-elevated: #1f2926;
+  
+  /* Text colors */
+  --text: #f7f8f6;          /* Light text */
+  --text-muted: #a0a8a6;    /* Muted light text */
+  --text-subtle: #717d7a;   /* More subtle text */
+  
+  /* Border and divider colors */
+  --border: #2d3735;        /* Dark border */
+  --border-strong: #3d4744;
+  --divider: #2d3735;
+  
+  /* Surface colors */
+  --subtle: #1d2321;        /* Dark subtle */
+  --muted: #a0a8a6;
+  
+  /* Status colors - Dark mode variants */
+  --success: #4ade80;       /* Brighter green for dark mode */
+  --success-light: #1f2e2a;
+  --success-subtle: #162823;
+  
+  --warning: #fbbf24;       /* Brighter amber for dark mode */
+  --warning-light: #2e2212;
+  --warning-subtle: #2a1e10;
+  
+  --danger: #f87171;        /* Brighter red for dark mode */
+  --danger-light: #2e1b1a;
+  --danger-subtle: #2c1412;
+  
+  --info: #60a5fa;          /* Brighter blue for dark mode */
+  --info-light: #1e2a38;
+  --info-subtle: #16202c;
+}
+
+/* ========================================
+   Typography Tokens
+   ======================================== */
+
+:root {
+  /* Font families */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'Inter', ui-monospace, SFMono-Regular, Menlo, monospace;
+  
+  /* Font sizes */
+  --text-xs: 0.75rem;      /* 12px */
+  --text-sm: 0.875rem;     /* 14px */
+  --text-base: 1rem;       /* 16px */
+  --text-lg: 1.125rem;     /* 18px */
+  --text-xl: 1.25rem;      /* 20px */
+  --text-2xl: 1.5rem;      /* 24px */
+  --text-3xl: 1.875rem;    /* 30px */
+  --text-4xl: 2.25rem;     /* 36px */
+  --text-5xl: 3rem;        /* 48px */
+  --text-6xl: 3.75rem;     /* 60px */
+  
+  /* Font weights */
+  --font-light: 300;
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  --font-extrabold: 800;
+  --font-black: 900;
+  
+  /* Line heights */
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  --leading-loose: 2;
+  
+  /* Letter spacing */
+  --tracking-tighter: -0.05em;
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+  --tracking-widest: 0.1em;
+}
+
+/* ========================================
+   Spacing Tokens
+   ======================================== */
+
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-9: 36px;
+  --space-10: 40px;
+  --space-11: 44px;
+  --space-12: 48px;
+  --space-14: 56px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+  --space-28: 112px;
+  --space-32: 128px;
+  --space-36: 144px;
+  --space-40: 160px;
+}
+
+/* ========================================
+   Border Radius Tokens
+   ======================================== */
+
+:root {
+  --radius-none: 0;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 24px;
+  --radius-full: 9999px;
+}
+
+/* ========================================
+   Shadow Tokens
+   ======================================== */
+
+:root {
+  /* Light mode shadows */
+  --shadow-sm: 0 2px 8px rgba(23, 35, 31, 0.08);
+  --shadow-md: 0 4px 12px rgba(23, 35, 31, 0.12);
+  --shadow-lg: 0 8px 24px rgba(23, 35, 31, 0.16);
+  --shadow-xl: 0 16px 48px rgba(23, 35, 31, 0.2);
+  
+  /* Brand-colored shadows */
+  --shadow-brand-sm: 0 2px 8px rgba(249, 115, 22, 0.15);
+  --shadow-brand-md: 0 4px 12px rgba(249, 115, 22, 0.15);
+  --shadow-brand-lg: 0 8px 24px rgba(249, 115, 22, 0.2);
+  
+  /* Glass effect */
+  --shadow-glass: 0 4px 12px rgba(249, 115, 22, 0.15);
+}
+
+.dark {
+  /* Dark mode shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+  
+  --shadow-brand-sm: 0 2px 8px rgba(249, 115, 22, 0.2);
+  --shadow-brand-md: 0 4px 12px rgba(249, 115, 22, 0.25);
+  --shadow-brand-lg: 0 8px 24px rgba(249, 115, 22, 0.3);
+}
+
+/* ========================================
+   Z-Index Tokens
+   ======================================== */
+
+:root {
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-popover: 600;
+  --z-tooltip: 700;
+  --z-toast: 1000;
+  --z-max: 9999;
+}
+
+/* ========================================
+   Transition Tokens
+   ======================================== */
+
+:root {
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 300ms ease;
+  --transition-slower: 500ms ease;
+  
+  /* Spring transitions */
+  --transition-spring: cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* ========================================
+   Glassmorphism Tokens
+   ======================================== */
+
+:root {
+  /* Light mode glass */
+  --glass-light: rgba(255, 255, 255, 0.8);
+  --glass-light-blur: 8px;
+  
+  /* Dark mode glass */
+  --glass-dark: rgba(23, 35, 31, 0.8);
+  --glass-dark-blur: 8px;
+  
+  /* Colored glass */
+  --glass-brand: rgba(249, 115, 22, 0.1);
+  --glass-brand-strong: rgba(249, 115, 22, 0.2);
+}
