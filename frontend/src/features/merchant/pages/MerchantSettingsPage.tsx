@@ -1,5 +1,5 @@
 import { useI18n } from '../../../shared/i18n/i18n';
-import { Button, Card } from '../../../components/ui';
+import { Button, Card, Section, FormFeedback } from '../../../components/ui';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthProvider';
 import { useGetBusinessSetupQuery } from '@/features/business-onboarding/api/businessOnboardingApi';
@@ -36,8 +36,8 @@ export default function MerchantSettingsPage() {
         <div className="mx-auto max-w-screen-md w-full">
           <Card className="p-6 text-center">
             <h2 className="text-[var(--danger)] text-lg font-semibold mb-2">{t('error')}</h2>
-            <p className="text-[var(--text-muted)] text-sm mb-4">{t('failedToLoad')}</p>
-            <Button variant="outline" onClick={() => navigate('/merchant')}>
+            <FormFeedback error={t('failedToLoad')} />
+            <Button variant="outline" onClick={() => navigate('/merchant')} className="mt-4">
               {t('backToDashboard')}
             </Button>
           </Card>
@@ -59,11 +59,7 @@ export default function MerchantSettingsPage() {
         </header>
 
         {/* Account Information Section */}
-        <section className="space-y-4">
-          <h2 className="text-[var(--text)] text-lg font-semibold pb-2 border-b border-[var(--border)]">
-            {t('accountInformation')}
-          </h2>
-
+        <Section title={t('accountInformation')}>
           {session ? (
             <Card className="p-6">
               <div className="space-y-4">
@@ -103,15 +99,11 @@ export default function MerchantSettingsPage() {
               <p className="text-[var(--text-muted)] text-sm">{t('noSessionData')}</p>
             </Card>
           )}
-        </section>
+        </Section>
 
         {/* Business Information Section */}
         {business && (
-          <section className="mt-8 space-y-4">
-            <h2 className="text-[var(--text)] text-lg font-semibold pb-2 border-b border-[var(--border)]">
-              {t('business')}
-            </h2>
-
+          <Section title={t('business')} subtitle={t('businessInformation')}>
             <Card className="p-6">
               <div className="flex items-center gap-4">
                 <div className="flex-shrink-0 h-12 w-12 rounded-lg bg-[var(--glass-brand)] border border-[var(--glass-brand-strong)] flex items-center justify-center">
@@ -142,15 +134,11 @@ export default function MerchantSettingsPage() {
                 </p>
               </div>
             </Card>
-          </section>
+          </Section>
         )}
 
         {/* Navigation to Branch Management */}
-        <section className="mt-8 space-y-4">
-          <h2 className="text-[var(--text)] text-lg font-semibold pb-2 border-b border-[var(--border)]">
-            {t('manage')}
-          </h2>
-
+        <Section title={t('manage')}>
           <Card
             className="p-4 cursor-pointer hover:bg-[var(--subtle)] transition-colors"
             onClick={() => navigate('/merchant/branches')}
@@ -167,7 +155,7 @@ export default function MerchantSettingsPage() {
               </div>
             </div>
           </Card>
-        </section>
+        </Section>
 
         <div className="mt-8 text-center">
           <Button variant="ghost" onClick={() => navigate('/merchant')}>
