@@ -28,3 +28,10 @@ export type { ConfirmRedemptionStepProps } from '../types';
 
 export { RedemptionCompleteStep } from './RedemptionCompleteStep';
 export type { RedemptionCompleteStepProps } from '../types';
+
+
+export { RegistrationFormModal } from './RegistrationFormModal';
+export type { RegistrationFormModalProps } from './RegistrationFormModal';
+
+export { RegistrationResultModal } from './RegistrationResultModal';
+export type { RegistrationResultModalProps } from './RegistrationResultModal';

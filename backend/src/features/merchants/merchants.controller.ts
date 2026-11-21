@@ -34,7 +34,9 @@ import { BusinessSetupService } from './business-setup.service';
 import { BranchService } from './branch.service';
 import { MerchantCustomerService } from './merchant-customer.service';
 import { MerchantTransactionService } from './merchant-transaction.service';
+import { MerchantCustomerRegistrationService } from './merchant-customer-registration.service';
 import { ResolveCustomerQrDto } from './dto/resolve-customer-qr.dto';
+import { RegisterCustomerDto, RegisterCustomerResponse } from './dto/register-customer.dto';
 import {
   ResolveCustomerForTransactionDto,
   CalculateEarningsDto,
@@ -56,6 +58,7 @@ export class MerchantsController {
     private readonly branchService: BranchService,
     private readonly merchantCustomers: MerchantCustomerService,
     private readonly merchantTransactions: MerchantTransactionService,
+    private readonly merchantCustomerRegistration: MerchantCustomerRegistrationService,
   ) {}
 
   /**
@@ -147,6 +150,33 @@ export class MerchantsController {
     @Body() input: ResolveCustomerQrDto,
   ) {
     return this.merchantCustomers.resolveCustomerQr(user.id, input.credential);
+  }
+
+  /**
+   * Merchant-assisted customer registration.
+   * Creates a customer identity, customer account, membership in the merchant's business,
+   * and generates a personal QR credential.
+   * Does NOT create a customer session or modify the merchant's session.
+   *
+   * Security: Only the SHA-256 hash of QR credentials is stored in the database.
+   * personalQrCredential is returned only for NEW customers (first registration).
+   * For existing customers, it is undefined since the raw credential cannot be
+   * retrieved from the hash. The customer should use their existing QR code.
+   *
+   * Request body: { name, phoneNumber, birthdate? }
+   * Success: 201 Created with customer, membership, and personalQrCredential (if new)
+   * Duplicate phone: 409 Conflict
+   * Invalid input: 400 Bad Request
+   * Unauthorized: 401 Unauthorized
+   * Forbidden (no merchant account/business): 403 Forbidden
+   */
+  @Post('customers/register')
+  @UseGuards(MerchantGuard)
+  async registerCustomer(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() input: RegisterCustomerDto,
+  ): Promise<RegisterCustomerResponse> {
+    return this.merchantCustomerRegistration.registerCustomer(user.id, input);
   }
 
   /**

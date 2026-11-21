@@ -3,6 +3,7 @@ import { CheckCircle, X, Award, ShoppingBag } from 'lucide-react';
 import { Card } from '../../../../components/ui/Card';
 import { Button } from '../../../../components/ui/Button';
 import { FormFeedback } from '../../../../components/ui/FormFeedback';
+import { useI18n } from '../../../../shared/i18n/i18n';
 import type { CustomerForTransactionResponse } from '../../api/merchantTransactionApi';
 
 /**
@@ -23,6 +24,7 @@ interface CustomerScanResultProps {
   errorMessage?: string;
 }
 
+
 export function CustomerScanResult({
   customerData,
   onRecordPurchase,
@@ -30,7 +32,11 @@ export function CustomerScanResult({
   onScanAnother,
   errorMessage,
 }: CustomerScanResultProps) {
+  const { t } = useI18n();
   const [expandedRewards, setExpandedRewards] = useState(false);
+  
+  const programmeTypeLabel = customerData.program.type === 'stamps' ? t('stampCard') : 
+                            customerData.program.type === 'points' ? t('pointsSystem') : t('combined');
 
   return (
     <div className="space-y-6">
@@ -41,7 +47,7 @@ export function CustomerScanResult({
             <CheckCircle className="w-5 h-5 text-[var(--brand)]" />
           </div>
           <div>
-            <h3 className="font-bold text-[var(--text)]">Customer Found</h3>
+            <h3 className="font-bold text-[var(--text)]">{t('customerFound')}</h3>
             <p className="text-[var(--text-muted)]">{customerData.customer.name}</p>
           </div>
         </div>
@@ -51,14 +57,14 @@ export function CustomerScanResult({
       <div className="grid grid-cols-2 gap-4">
         <Card className="p-4 text-center">
           <Award className="w-6 h-6 text-[var(--brand)] mx-auto mb-2" />
-          <p className="text-[var(--text-muted)] text-sm">Stamps</p>
+          <p className="text-[var(--text-muted)] text-sm">{t('stamps')}</p>
           <p className="text-2xl font-bold text-[var(--text)]">
             {customerData.balance.stamps}
           </p>
         </Card>
         <Card className="p-4 text-center">
           <Award className="w-6 h-6 text-[var(--brand)] mx-auto mb-2" />
-          <p className="text-[var(--text-muted)] text-sm">Points</p>
+          <p className="text-[var(--text-muted)] text-sm">{t('points')}</p>
           <p className="text-2xl font-bold text-[var(--text)]">
             {customerData.balance.points}
           </p>
@@ -70,12 +76,12 @@ export function CustomerScanResult({
         <div className="flex items-center gap-3">
           <ShoppingBag className="w-5 h-5 text-[var(--text-muted)]" />
           <div>
-            <p className="text-[var(--text-muted)] text-sm">Programme</p>
+            <p className="text-[var(--text-muted)] text-sm">{t('programme')}</p>
             <p className="font-medium text-[var(--text)]">
-              {customerData.program.name || 'Active Programme'} (v{customerData.program.version})
+              {customerData.program.name || t('activeProgramme')} (v{customerData.program.version})
             </p>
             <p className="text-[var(--text-muted)] text-xs">
-              Type: {customerData.program.type}
+              {t('programmeType')}: {programmeTypeLabel}
             </p>
           </div>
         </div>
@@ -90,10 +96,10 @@ export function CustomerScanResult({
             onClick={() => setExpandedRewards(!expandedRewards)}
           >
             <span className="font-semibold text-[var(--text)]">
-              Available Rewards ({customerData.eligibleRewards.length})
+              {t('availableRewards')} ({customerData.eligibleRewards.length})
             </span>
             <span className="text-[var(--text-muted)]">
-              {expandedRewards ? 'Hide' : 'Show'}
+              {expandedRewards ? t('hide') : t('show')}
             </span>
           </Button>
           
@@ -109,12 +115,12 @@ export function CustomerScanResult({
                   <div className="flex justify-between items-center">
                     <span className="font-medium text-[var(--text)]">{reward.name}</span>
                     <span className="text-sm text-[var(--text-muted)]">
-                      {reward.pointsCost} pts
-                      {reward.stampsCost ? ` + ${reward.stampsCost} stamps` : ''}
+                      {reward.pointsCost} {t('pts')}
+                      {reward.stampsCost ? ` + ${reward.stampsCost} ${t('stamps')}` : ''}
                     </span>
                   </div>
                   {!reward.available && (
-                    <p className="text-xs text-[var(--danger)] mt-1">Not enough balance</p>
+                    <p className="text-xs text-[var(--danger)] mt-1">{t('notEnoughBalance')}</p>
                   )}
                 </button>
               ))}
@@ -129,7 +135,7 @@ export function CustomerScanResult({
           className="flex-1"
           onClick={onRecordPurchase}
         >
-          Record Purchase
+          {t('recordPurchase')}
         </Button>
         {customerData.eligibleRewards.length > 0 && (
           <Button 
@@ -137,13 +143,13 @@ export function CustomerScanResult({
             className="flex-1"
             onClick={() => setExpandedRewards(!expandedRewards)}
           >
-            Redeem Reward
+            {t('redeemReward')}
           </Button>
         )}
       </div>
       
       <Button variant="ghost" className="w-full" onClick={onScanAnother}>
-        Scan Different Customer
+        {t('scanDifferentCustomer')}
       </Button>
 
       {errorMessage && <FormFeedback error={errorMessage} />}
@@ -158,32 +164,43 @@ interface CustomerNotFoundProps {
   errorMessage?: string;
   onTryAgain: () => void;
   onClose: () => void;
+  onRegisterCustomer?: () => void;
 }
+
 
 export function CustomerNotFound({
   errorMessage,
   onTryAgain,
   onClose,
+  onRegisterCustomer,
 }: CustomerNotFoundProps) {
+  const { t } = useI18n();
+  
   return (
     <div className="text-center py-8">
       <div className="mx-auto w-20 h-20 rounded-full bg-[var(--danger-light)] flex items-center justify-center mb-6">
         <X className="w-10 h-10 text-[var(--danger)]" />
       </div>
-      <h3 className="text-xl font-bold text-[var(--danger)] mb-2">Customer Not Found</h3>
+      <h3 className="text-xl font-bold text-[var(--danger)] mb-2">{t('customerNotFound')}</h3>
       <p className="text-[var(--text-muted)] mb-6">
-        {errorMessage || 'The QR credential could not be resolved to a customer'}
+        {errorMessage || t('customerNotFoundMessage')}
       </p>
       <div className="space-y-3">
+        {onRegisterCustomer && (
+          <Button className="w-full" variant="outline" onClick={onRegisterCustomer}>
+            {t('registerCustomer')}
+          </Button>
+        )}
         <Button className="w-full" onClick={onTryAgain}>
-          Try Again
+          {t('tryAgain')}
         </Button>
         <Button variant="outline" className="w-full" onClick={onClose}>
-          Close
+          {t('close')}
         </Button>
       </div>
     </div>
   );
 }
+
 
 export type { CustomerScanResultProps, CustomerNotFoundProps };

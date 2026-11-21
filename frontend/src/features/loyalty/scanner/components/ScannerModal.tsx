@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { Modal } from '../../../../components/ui/Modal';
+import { useI18n } from '../../../../shared/i18n/i18n';
 import {
   useResolveCustomerForTransactionMutation,
   useCalculateEarningsMutation,
   useCreateLoyaltyTransactionMutation,
   useRedeemRewardMutation,
 } from '../../api';
+import { useRegisterCustomerMutation } from '../../../../features/merchant/api/merchantApi';
 import type { ScannerModalProps } from '../types';
 import type { CustomerForTransactionResponse, CalculateEarningsResponse } from '../../api/merchantTransactionApi';
+import type { RegisterCustomerDto, RegisterCustomerResponse } from '../../../../features/merchant/dto/register-customer.dto';
 import {
   ScannerViewport,
   ManualCredentialEntry,
@@ -20,6 +23,8 @@ import {
   TransactionCompleteStep,
   ConfirmRedemptionStep,
   RedemptionCompleteStep,
+  RegistrationFormModal,
+  RegistrationResultModal,
 } from './';
 import { useCamera } from '../hooks/useCamera';
 import { useScannerState } from '../hooks/useScannerState';
@@ -40,6 +45,9 @@ import { useScannerState } from '../hooks/useScannerState';
  * - RedemptionCompleteStep: Reward redemption success
  */
 export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: ScannerModalProps) {
+  // Translation hook
+  const { t } = useI18n();
+  
   // State management via custom hook
   const scanner = useScannerState(defaultBranchId);
   
@@ -48,6 +56,10 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
   const [purchaseAmountInput, setPurchaseAmountInput] = useState('');
   const [busy, setBusy] = useState(false);
   
+  // Registration modal state
+  const [showRegistrationModal, setShowRegistrationModal] = useState(false);
+  const [registrationResult, setRegistrationResult] = useState<RegisterCustomerResponse | null>(null);
+
   // Idempotency keys for duplicate prevention - generated once per transaction/redeem intent
   const transactionIdempotencyKeyRef = useRef<string | null>(null);
   const redemptionIdempotencyKeyRef = useRef<string | null>(null);
@@ -74,6 +86,7 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
   const [calculateEarnings] = useCalculateEarningsMutation();
   const [createTransaction] = useCreateLoyaltyTransactionMutation();
   const [redeemReward] = useRedeemRewardMutation();
+  const [registerCustomer] = useRegisterCustomerMutation();
 
   // Permission tracking ref
   const permissionRequestedRef = useRef(false);
@@ -132,7 +145,7 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
         });
       })
       .catch((err) => {
-        const message = (err.data?.error || err.error || 'Customer not found. Please check the QR code.') as string;
+        const message = (err.data?.error || err.error || t('customerNotFoundMessage')) as string;
         scanner.goToResolved({ credential, customerData: undefined as any, branchId: defaultBranchId });
         scanner.setError(message);
       })
@@ -142,7 +155,7 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
   // Handle manual credential submission
   function handleScanFromManual() {
     if (!manualCredential.trim()) {
-      scanner.setError('Please enter a QR credential');
+      scanner.setError(t('pleaseEnterQR'));
       return;
     }
     stopCamera();
@@ -155,7 +168,7 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
 
     const amount = parseFloat(purchaseAmountInput);
     if (isNaN(amount) || amount <= 0) {
-      scanner.setError('Please enter a valid purchase amount');
+      scanner.setError(t('pleaseEnterValidAmount'));
       return;
     }
 
@@ -184,7 +197,7 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
 
     const key = transactionIdempotencyKeyRef.current;
     if (!key) {
-      scanner.setError('Transaction key missing. Please try again.');
+      scanner.setError(t('keyMissing'));
       setBusy(false);
       return;
     }
@@ -225,7 +238,7 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
 
     const key = redemptionIdempotencyKeyRef.current;
     if (!key) {
-      scanner.setError('Redemption key missing. Please try again.');
+      scanner.setError(t('keyMissing'));
       setBusy(false);
       return;
     }
@@ -276,6 +289,51 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
         scanner.goToScan();
       }
     }, 100);
+  }
+
+  // Handle registration form submission
+  function handleRegisterCustomer(name: string, phone: string, dateOfBirth?: string) {
+    // Basic Tunisian phone validation
+    const phoneRegex = /^(\+216|216)?[0-9]{8}$/;
+    const cleanedPhone = phone.replace(/\s+/g, '');
+    if (!phoneRegex.test(cleanedPhone)) {
+      scanner.setError(t('invalidPhoneFormat'));
+      return;
+    }
+
+    setBusy(true);
+
+    const request: RegisterCustomerDto = {
+      name: name.trim(),
+      phone: cleanedPhone,
+      dateOfBirth: dateOfBirth || undefined,
+    };
+
+    registerCustomer(request)
+      .unwrap()
+      .then((result: RegisterCustomerResponse) => {
+        setRegistrationResult(result);
+        setShowRegistrationModal(false);
+      })
+      .catch((err) => {
+        const message = (err.data?.error || err.error || t('registrationFailed')) as string;
+        scanner.setError(message);
+      })
+      .finally(() => setBusy(false));
+  }
+
+  // Open registration modal
+  function openRegistrationModal() {
+    setShowRegistrationModal(true);
+    setRegistrationResult(null);
+    scanner.clearError();
+  }
+
+  // Close registration modal
+  function closeRegistrationModal() {
+    setShowRegistrationModal(false);
+    setRegistrationResult(null);
+    scanner.clearError();
   }
 
   // Helper to safely go back to resolved state
@@ -348,6 +406,7 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
               errorMessage={scanner.errorMessage}
               onTryAgain={scanAnother}
               onClose={onClose}
+              onRegisterCustomer={openRegistrationModal}
             />
           );
         }
@@ -432,16 +491,35 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Scan Customer QR"
-      size="lg"
-    >
-      <div className="max-w-md mx-auto">
-        {renderContent()}
-      </div>
-    </Modal>
+    <>
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title={t('scanCustomerQRTitle')}
+        size="lg"
+      >
+        <div className="max-w-md mx-auto">
+          {renderContent()}
+        </div>
+      </Modal>
+
+      {/* Registration Modal */}
+      <RegistrationFormModal
+        isOpen={showRegistrationModal}
+        onClose={closeRegistrationModal}
+        onSuccess={setRegistrationResult}
+        isBusy={busy}
+        errorMessage={scanner.errorMessage}
+        onRegister={handleRegisterCustomer}
+      />
+
+      {/* Registration Result Modal */}
+      <RegistrationResultModal
+        result={registrationResult}
+        onClose={scanAnother}
+        onScanAnother={scanAnother}
+      />
+    </>
   );
 }
 
