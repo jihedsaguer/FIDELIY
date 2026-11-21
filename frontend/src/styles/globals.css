@@ -1,6 +1,9 @@
 /* Import Tailwind CSS v4 */
 @import "tailwindcss";
 
+/* Import Tailwind config */
+@config "../../tailwind.config.mjs";
+
 /* Import Design Tokens */
 @import "./design-tokens.css";
 
@@ -1641,4 +1644,27 @@ footer {
 .badge-muted {
   background: var(--subtle);
   color: var(--text-muted);
+}
+
+/* ========================================
+   shadcn/ui Layer Configuration
+   ======================================== */
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+  body {
+    @apply bg-background text-text;
+  }
+}
+
+@layer components {
+  /* shadcn/ui components will be added here */
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
 }
