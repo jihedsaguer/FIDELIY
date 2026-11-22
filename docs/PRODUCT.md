@@ -10,12 +10,12 @@
 - Leverages mobile penetration and SMS-first accessibility in Tunisia
 - Complies with emerging market payment infrastructure (SMS-based, offline-capable)
 
-**Business Model:** Subscription-based per-merchant; freemium tier considered for small merchants.
+**Business Model:** Release 1 has no billing, subscription enforcement, or plan limits; transactions are cash-based. Future SaaS monetization (for example per-merchant subscriptions) remains possible and is deferred; it is neither designed nor implemented (DECISIONS #19).
 
 ## 2. User Account Types
 
 ### Customer
-- **Authentication:** Phone number via OTP (SMS) — no email required for sign-up
+- **Authentication:** Phone number as a unique identifier (not verified in Release 1; OTP verification deferred to Release 2) — no email required for sign-up
 - **Global Identity:** One customer identity per person
 - **Multi-Membership:** Same customer can join different merchants' programs
 - **Independent Balances:** Each program membership has separate point/stamp balances
@@ -38,9 +38,9 @@
 ### Customer Features
 
 **Authentication & Onboarding**
-- Phone-only sign-up via OTP (Better Auth Phone Number plugin)
-- Phone-based sign-in (OTP option available)
-- Optional phone number update (requires reverification)
+- Phone-number registration: customer self-registration or merchant-assisted registration; the phone number is a unique identifier and is not verified in Release 1
+- Phone-based sign-in with the registered phone number (no OTP in Release 1)
+- Phone number update (OTP reverification deferred to Release 2)
 - Email optional (for notifications only)
 
 **Membership Management**
@@ -70,14 +70,15 @@
 - **Program Changes:** Update rules without losing customer balances or transaction history
 
 **Reward Management**
-- Define reward thresholds (e.g., 10 stamps = "Get 1 Free Coffee")
-- Track reward inventory
-- Approve redemptions
+- Stamp earning no longer uses `purchasesPerStamp` (deprecated): one stamp per confirmed purchase
+- Define multiple reward thresholds per programme (e.g., 10 stamps = "Get 1 Free Coffee"); each reward costs stamps **or** points, never a mix
+- Select the reward at redemption; the server verifies the balance
+- No reward codes or reward inventory in Release 1 (see DECISIONS.md #15)
 
 **Customer Engagement**
 - View customer list with engagement metrics
 - Record purchases (via QR scan or manual entry)
-- Issue stamps/points manually if needed
+- Issue stamps/points manually (deferred; not in 6B-C)
 - View customer transaction history
 
 **Dashboard**
@@ -99,16 +100,24 @@
 
 ## 4. Core Workflows
 
-### Customer Sign-Up (Phone-Based)
+### Customer Registration (Phone-Based, No OTP in Release 1)
 
+Self-registration:
 ```
 1. Customer navigates to FIDELIY app
 2. Enters phone number (+216 XXX XX XX XX)
-3. Receives OTP via SMS
-4. Enters OTP code
-5. Account created; session established
-6. Prompted to join a program or search for merchants
+3. Account is created with the phone number as a unique identifier (not verified); session established
+4. Prompted to join a program or search for merchants
 ```
+
+Merchant-assisted registration:
+```
+1. At the counter the merchant enters the customer's name and phone number
+2. Account is created (or the existing account for that phone number is found) and joined to the business programme
+3. The customer can later sign in with the same phone number
+```
+
+OTP verification of phone ownership is deferred to Release 2.
 
 ### Customer Joins a Program
 
@@ -117,30 +126,45 @@
 2. Views program details (name, earning rules, available rewards)
 3. Clicks "Join Program"
 4. Membership recorded; can now earn rewards at this merchant
+
+Alternative (DECISIONS #21): when a merchant validates the customer's personal QR (or short ID) and the customer is not yet a member
+(or has left), the customer is enrolled as an active member automatically and the merchant sees a notice. The loyalty card is the
+membership plus its ledger-computed balance (0 / 0 at first); nothing else is created. Requires an active programme.
 ```
 
 ### Purchase & Earn Rewards (Merchant-Initiated)
 
 ```
-1. Customer scans their personal QR code at merchant
-   (or merchant manually enters customer phone/code)
-2. Merchant enters purchase amount (e.g., 50 DNT)
-3. System calculates eligible rewards based on program rules
-4. Merchant reviews and confirms transaction
-5. Rewards added to customer's account
-6. Both parties see updated balance
-7. Email confirmation sent
+1. Customer shows their personal QR code; merchant scans it (the server resolves the customer and enrols them as an active member if needed, DECISIONS #21)
+2. Merchant records the purchase amount in TND (decimal, up to 3 places).
+   Optional for stamp-only programmes; required when the programme includes points
+3. System calculates the result from the active programme (server-side):
+   stamps: exactly 1 stamp per confirmed purchase (the amount does not change the count);
+   points: floor(amount x rate), integer arithmetic, rate up to 2 decimals
+4. If the same customer was awarded within the previous 10 minutes, the merchant sees a warning and must explicitly confirm to proceed (never an automatic block)
+5. Merchant confirms; one atomic ledger transaction is written with the amount and exact programme version
+6. Both parties see the updated balance (email confirmation is not part of 6B-C)
 ```
 
 ### Redemption (Merchant-Initiated)
 
 ```
 1. Customer requests a reward (in-store)
-2. Merchant confirms redemption eligibility
-3. System verifies reward availability
-4. Redemption processed; balance updated
-5. Reward marked as redeemed (one-time use)
-6. Email confirmation sent
+2. Merchant scans the customer's QR and selects the reward
+3. Server verifies the balance in the same serializable transaction
+4. Reward cost is deducted from the balance; any surplus is preserved
+5. A redemption transaction is recorded in the ledger (not a manual adjustment)
+6. Both parties see the updated balance
+```
+
+### Correction (Reversal)
+
+```
+1. Owner opens a transaction in the business history
+2. Owner enters a required reason (free text, max 500 characters)
+3. System reverses the whole transaction with exact inverse entries (once only, idempotent)
+4. Refused if any balance would become negative; reverse the dependent redemption first
+5. Reversal appears as its own transaction with the reason; it is final (cannot be reversed)
 ```
 
 ### Merchant Sign-Up
@@ -169,10 +193,10 @@
 - No silent balance deletion or conversion
 
 ### Reward Redemption Integrity
-- Each reward code is one-time use
-- Redemption verified on backend before completion
-- Prevents concurrent redemptions of same code
-- Expired rewards cannot be redeemed
+- Redemption is balance-based: the merchant selects a reward and the server deducts its cost (no reward codes in Release 1)
+- Redemption is verified on the backend, in a serializable transaction, before completion
+- Prevents concurrent redemptions that would overspend a balance
+- A reward costs stamps or points, never a mix; surplus balance is preserved
 
 ### Transaction Atomicity
 - Earning and redemption are atomic operations
@@ -181,21 +205,28 @@
 - Prevents double-spending or lost transactions
 
 ### Expiration Policies
-- Rewards can have optional expiration dates
-- Expired rewards not visible to customers
+- No stamp, point or reward expiry is enforced in Release 1 (expiry fields may be stored but are ignored); deferred
 - Historical transactions retained indefinitely (audit trail)
-- Expired/redeemed rewards tracked separately from active inventory
 
-### Account Type Immutability
-- Customer account cannot become merchant and vice versa
-- Account type determined at sign-up; not changeable
-- Enforced via immutable `user.userType` field in database
-- Business logic enforced in NestJS guards (CustomerGuard, MerchantGuard)
+### Monetary Amounts
+- Currency is TND with three decimal places (millimes); amounts are stored as integer millimes
+- API amounts are decimal strings, positive, at most 3 decimal places; no silent rounding
+- Points earning rates keep at most 2 decimal places and use integer arithmetic; fractions of a point are discarded
+
+### Corrections and History
+- The owner may reverse any transaction of their business in full (no time limit, no partial edits), once, with a required reason (max 500 characters); a reversal is final and cannot itself be reversed in Release 1
+- A reversal must never make a balance negative
+- Past earnings are never recalculated with current programme rules; the ledger is authoritative
+
+### Account Capabilities
+- Capabilities are determined by membership in the `customer_accounts` and `merchant_accounts` tables; one person may hold both (DECISIONS #11)
+- There is no `userType` field
+- Enforced server-side in NestJS guards (CustomerGuard, MerchantGuard), not by frontend logic
 
 ## 6. Release 1 Scope
 
 ### IN SCOPE
-- Customer authentication (phone OTP)
+- Customer registration and sign-in by phone number (self-registration and merchant-assisted; phone not verified)
 - Merchant authentication (email + password)
 - Stamp card programs
 - Points-based programs
@@ -222,6 +253,8 @@
 - Offline earning/redemption
 - POS integrations
 - Payment processing
+- Billing, subscriptions and plan limits (deferred; future SaaS monetization is not excluded)
+- Phone OTP verification (deferred to Release 2)
 
 ## 7. Non-Functional Requirements
 
@@ -236,7 +269,7 @@
 - Disaster recovery plan (RTO < 1 hour, RPO < 15 minutes)
 
 ### Security
-- Phone number verification via OTP (prevents unauthorized registration)
+- Phone numbers are unique identifiers and are not verified in Release 1; OTP verification (to prevent unauthorized registration) is deferred to Release 2
 - Email verification for merchant accounts
 - Row-level security for multi-tenant data isolation
 - HTTPS for all traffic
@@ -253,14 +286,14 @@
 ### External Services
 - **Better Auth:** Authentication, session management (Phone Number plugin for customers, email/password for merchants)
 - **Resend:** Transactional email delivery
-- **SMS Provider:** Phone OTP delivery (vendor pending for Tunisia +216)
-- **Postgres Database:** Supabase (development) or Neon (production alternative)
+- **SMS Provider:** Phone OTP delivery (deferred to Release 2; vendor pending for Tunisia +216; not required for Release 1)
+- **PostgreSQL:** Docker (`postgres:16-alpine`) for local development; Neon is the planned deployment database (DECISIONS #18)
 
 ### Third-Party Libraries
 - Drizzle ORM (database abstraction)
-- React 18 (frontend)
+- React 19 + Vite + Tailwind CSS 4 (frontend)
 - NestJS (backend)
-- shadcn/ui (UI components)
+- In-repo UI primitives in `frontend/src/components/ui` (shadcn/ui was removed; DECISIONS #17)
 
 ## 9. Success Metrics
 

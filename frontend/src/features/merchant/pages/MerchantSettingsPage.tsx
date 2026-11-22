@@ -20,19 +20,19 @@ export default function MerchantSettingsPage() {
 
   if (isLoading) {
     return (
-      <main className="flex-1 bg-[var(--background)] p-4 md:p-8">
+      <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
         <div className="mx-auto max-w-screen-md w-full space-y-6">
           <div className="h-10 w-64 bg-[var(--subtle)] rounded-lg animate-pulse" />
           <div className="h-40 w-full bg-[var(--subtle)] rounded-lg animate-pulse" />
           <div className="h-40 w-full bg-[var(--subtle)] rounded-lg animate-pulse" />
         </div>
-      </main>
+      </div>
     );
   }
 
   if (hasError) {
     return (
-      <main className="flex-1 bg-[var(--background)] p-4 md:p-8">
+      <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
         <div className="mx-auto max-w-screen-md w-full">
           <Card className="p-6 text-center">
             <h2 className="text-[var(--danger)] text-lg font-semibold mb-2">{t('error')}</h2>
@@ -42,12 +42,12 @@ export default function MerchantSettingsPage() {
             </Button>
           </Card>
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="flex-1 bg-[var(--background)] p-4 md:p-8">
+    <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
       <div className="mx-auto max-w-screen-md w-full">
         <header className="mb-8">
           <h1 className="text-[var(--text)] text-2xl md:text-3xl font-bold">
@@ -163,6 +163,6 @@ export default function MerchantSettingsPage() {
           </Button>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

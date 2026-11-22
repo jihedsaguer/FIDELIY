@@ -3,13 +3,12 @@ import { Modal } from '../../../../components/ui/Modal';
 import { useI18n } from '../../../../shared/i18n/i18n';
 import {
   useResolveCustomerForTransactionMutation,
-  useCalculateEarningsMutation,
   useCreateLoyaltyTransactionMutation,
   useRedeemRewardMutation,
 } from '../../api';
 import { useRegisterCustomerMutation } from '../../../../features/merchant/api/merchantApi';
 import type { ScannerModalProps } from '../types';
-import type { CustomerForTransactionResponse, CalculateEarningsResponse } from '../../api/merchantTransactionApi';
+import type { RewardOption } from '../../api/merchantTransactionApi';
 import type { RegisterCustomerDto, RegisterCustomerResponse } from '../../../../features/merchant/dto/register-customer.dto';
 import {
   ScannerViewport,
@@ -18,9 +17,6 @@ import {
   ScannerErrorState,
   CustomerScanResult,
   CustomerNotFound,
-  CalculateEarningsStep,
-  ConfirmTransactionStep,
-  TransactionCompleteStep,
   ConfirmRedemptionStep,
   RedemptionCompleteStep,
   RegistrationFormModal,
@@ -28,6 +24,12 @@ import {
 } from './';
 import { useCamera } from '../hooks/useCamera';
 import { useScannerState } from '../hooks/useScannerState';
+import { useScannerBranch } from '../hooks/useScannerBranch';
+import { useIdempotencyKey } from '../hooks/useIdempotencyKey';
+import { validatePurchaseAmount } from '../utils/amount';
+import { formatDeltas } from '../utils/transactionFormat';
+import { isRepeatConfirmationRequired, transactionErrorKey, readApiError } from '../utils/apiError';
+import { ConfirmDialog } from '../../../../components/ui/ConfirmDialog';
 
 /**
  * ScannerModal - Main scanner dialog component
@@ -37,10 +39,7 @@ import { useScannerState } from '../hooks/useScannerState';
  * - ManualCredentialEntry: Manual QR credential input
  * - ScannerPermissionState: Permission denied state
  * - ScannerErrorState: Camera initialization error state
- * - CustomerScanResult: Customer found display
- * - CalculateEarningsStep: Purchase amount input
- * - ConfirmTransactionStep: Transaction confirmation
- * - TransactionCompleteStep: Transaction success
+ * - CustomerScanResult: Customer found display and direct purchase recording
  * - ConfirmRedemptionStep: Reward redemption confirmation
  * - RedemptionCompleteStep: Reward redemption success
  */
@@ -54,24 +53,21 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
   // Local state for form inputs
   const [manualCredential, setManualCredential] = useState('');
   const [purchaseAmountInput, setPurchaseAmountInput] = useState('');
+  const [amountError, setAmountError] = useState<string | undefined>();
+  // Inline success after an earn: the merchant stays on the resolved card screen.
+  const [earnSuccess, setEarnSuccess] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
   
   // Registration modal state
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
   const [registrationResult, setRegistrationResult] = useState<RegisterCustomerResponse | null>(null);
 
-  // Idempotency keys for duplicate prevention - generated once per transaction/redeem intent
-  const transactionIdempotencyKeyRef = useRef<string | null>(null);
-  const redemptionIdempotencyKeyRef = useRef<string | null>(null);
-  
-  // Generate a unique idempotency key
-  const generateIdempotencyKey = (): string => {
-    if (typeof globalThis.crypto?.randomUUID === 'function') {
-      return globalThis.crypto.randomUUID();
-    }
-    // Fallback for environments without crypto.randomUUID
-    return Date.now().toString(36) + Math.random().toString(36).substring(2);
-  };
+  // Idempotency keys live only in refs (never in storage): one per logical request.
+  const earnKey = useIdempotencyKey();
+  const redeemKey = useIdempotencyKey();
+
+  // Branch choice (picker shown only when the business has several branches)
+  const branch = useScannerBranch(isOpen, defaultBranchId);
 
   // Camera management via custom hook
   const {
@@ -83,7 +79,6 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
 
   // API mutations
   const [resolveCustomer] = useResolveCustomerForTransactionMutation();
-  const [calculateEarnings] = useCalculateEarningsMutation();
   const [createTransaction] = useCreateLoyaltyTransactionMutation();
   const [redeemReward] = useRedeemRewardMutation();
   const [registerCustomer] = useRegisterCustomerMutation();
@@ -91,21 +86,30 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
   // Permission tracking ref
   const permissionRequestedRef = useRef(false);
 
-  // Reset state when modal opens/closes
+  // `reset` and `handleScannedQr` are plain functions re-created on every render.
+  // Effects read them through refs so that re-renders (e.g. typing in the manual
+  // entry field) never re-run the open/close or camera effects.
+  const resetRef = useRef<() => void>(() => undefined);
+  const handleScannedQrRef = useRef<(qrText: string) => void>(() => undefined);
+  const wasOpenRef = useRef(false);
+  const { goToPermission } = scanner;
+
+  // Reset state only on the closed -> open transition; stop the camera on close.
   useEffect(() => {
+    const wasOpen = wasOpenRef.current;
+    wasOpenRef.current = isOpen;
     if (isOpen) {
-      reset();
+      if (wasOpen) return;
+      resetRef.current();
       permissionRequestedRef.current = false;
-      // Reset idempotency keys when opening fresh
-      transactionIdempotencyKeyRef.current = null;
-      redemptionIdempotencyKeyRef.current = null;
+      earnKey.clear();
+      redeemKey.clear();
     } else {
       stopCamera();
-      // Reset idempotency keys when closing
-      transactionIdempotencyKeyRef.current = null;
-      redemptionIdempotencyKeyRef.current = null;
+      earnKey.clear();
+      redeemKey.clear();
     }
-  }, [isOpen, stopCamera, reset]);
+  }, [isOpen, stopCamera, earnKey.clear, redeemKey.clear]);
 
   // Handle camera permission and scanning
   useEffect(() => {
@@ -116,14 +120,14 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
       permissionRequestedRef.current = true;
 
       try {
-        await startScanning(handleScannedQr);
+        await startScanning((qrText) => handleScannedQrRef.current(qrText));
       } catch (err) {
-        scanner.goToPermission();
+        goToPermission();
       }
     };
 
     initializeScanning();
-  }, [scanner.step, videoRef, startScanning, scanner]);
+  }, [scanner.step, videoRef, startScanning, goToPermission]);
 
   // Handle successful QR scan
   function handleScannedQr(qrText: string) {
@@ -145,9 +149,8 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
         });
       })
       .catch((err) => {
-        const message = (err.data?.error || err.error || t('customerNotFoundMessage')) as string;
-        scanner.goToResolved({ credential, customerData: undefined as any, branchId: defaultBranchId });
-        scanner.setError(message);
+        scanner.goToResolved({ credential, branchId: defaultBranchId });
+        scanner.setError(t(transactionErrorKey(err, 'resolve')));
       })
       .finally(() => setBusy(false));
   }
@@ -162,107 +165,89 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
     resolveQrCredential(manualCredential.trim());
   }
 
-  // Handle earnings calculation
-  function handleCalculateEarnings() {
-    if (!scanner.customerData || purchaseAmountInput === '') return;
+  // Record a purchase straight from the resolved screen. The server calculates the
+  // earnings itself. `confirmRepeat` resends the SAME key after the 10-minute warning.
+  function handleEarnDirect(confirmRepeat = false) {
+    if (!scanner.customerData || branch.blocked) return;
 
-    const amount = parseFloat(purchaseAmountInput);
-    if (isNaN(amount) || amount <= 0) {
-      scanner.setError(t('pleaseEnterValidAmount'));
+    const amountRequired = scanner.customerData.program.type !== 'stamps';
+    const validation = validatePurchaseAmount(purchaseAmountInput, amountRequired);
+    if (!validation.ok) {
+      setAmountError(t(validation.error === 'required' ? 'amountRequiredForPoints' : 'invalidAmountFormat'));
       return;
     }
+    setAmountError(undefined);
+    setEarnSuccess(undefined);
 
-    setBusy(true);
-    calculateEarnings({
-      membershipId: scanner.customerData.membership.id,
-      purchaseAmount: amount,
-      branchId: scanner.branchId || defaultBranchId,
-    })
-      .unwrap()
-      .then((earnings) => {
-        // Generate idempotency key for transaction and go to confirm
-        transactionIdempotencyKeyRef.current = generateIdempotencyKey();
-        scanner.goToConfirm({ purchaseAmount: amount, earnings });
-      })
-      .catch((err) => {
-        const message = (err.data?.error || err.error || 'Failed to calculate earnings.') as string;
-        scanner.setError(message);
-      })
-      .finally(() => setBusy(false));
-  }
-
-  // Handle transaction creation
-  function handleCreateTransaction() {
-    if (!scanner.customerData || !scanner.earnings || !scanner.purchaseAmount) return;
-
-    const key = transactionIdempotencyKeyRef.current;
-    if (!key) {
-      scanner.setError(t('keyMissing'));
-      setBusy(false);
-      return;
-    }
+    const membershipId = scanner.customerData.membership.id;
+    const key = earnKey.keyFor(
+      `earn|${membershipId}|${validation.value ?? ''}|${branch.branchId ?? ''}`,
+    );
 
     setBusy(true);
     createTransaction({
-      membershipId: scanner.customerData.membership.id,
-      purchaseAmount: scanner.purchaseAmount,
-      stampsEarned: scanner.earnings.stampsToEarn,
-      pointsEarned: scanner.earnings.pointsToEarn,
-      branchId: scanner.branchId || defaultBranchId,
+      membershipId,
+      ...(validation.value !== undefined ? { purchaseAmount: validation.value } : {}),
+      ...(branch.branchId ? { branchId: branch.branchId } : {}),
       idempotencyKey: key,
+      ...(confirmRepeat ? { confirmRepeat: true } : {}),
     })
       .unwrap()
       .then((transaction) => {
-        scanner.goToComplete(transaction);
-        stopCamera();
-        // Reset key after successful transaction
-        transactionIdempotencyKeyRef.current = null;
+        scanner.applyBalance(transaction.newBalance);
+        const deltas = formatDeltas(
+          { stampsDelta: transaction.stampsEarned, pointsDelta: transaction.pointsEarned },
+          t('stamps'),
+          t('points'),
+        );
+        setEarnSuccess(deltas ? `${t('transactionRecordedSuccessfully')} : ${deltas}` : t('transactionRecordedSuccessfully'));
+        setPurchaseAmountInput('');
+        earnKey.clear();
       })
       .catch((err) => {
-        const message = (err.data?.error || err.error || 'Failed to create transaction.') as string;
-        scanner.setError(message);
+        if (isRepeatConfirmationRequired(err)) {
+          scanner.openRepeatWarning();
+          return;
+        }
+        scanner.setError(t(transactionErrorKey(err, 'earn')));
       })
       .finally(() => setBusy(false));
   }
 
   // Handle reward selection
-  function handleSelectReward(rewardId: string) {
-    // Generate idempotency key when starting redemption flow
-    redemptionIdempotencyKeyRef.current = generateIdempotencyKey();
-    scanner.goToRedeemConfirm(rewardId);
+  function handleSelectReward(reward: RewardOption) {
+    setEarnSuccess(undefined);
+    scanner.goToRedeemConfirm({ configurationId: reward.configurationId, rewardIndex: reward.rewardIndex });
   }
 
   // Handle reward redemption
   function handleRedeemReward() {
-    if (!scanner.customerData || !scanner.selectedRewardId) return;
+    if (!scanner.customerData || !scanner.selectedReward || branch.blocked) return;
 
-    const key = redemptionIdempotencyKeyRef.current;
-    if (!key) {
-      scanner.setError(t('keyMissing'));
-      setBusy(false);
-      return;
-    }
+    const membershipId = scanner.customerData.membership.id;
+    const { configurationId, rewardIndex } = scanner.selectedReward;
+    const key = redeemKey.keyFor(
+      `redeem|${membershipId}|${configurationId}|${rewardIndex}|${branch.branchId ?? ''}`,
+    );
 
     setBusy(true);
     redeemReward({
-      membershipId: scanner.customerData.membership.id,
-      rewardId: scanner.selectedRewardId,
-      branchId: scanner.branchId || defaultBranchId,
+      membershipId,
+      configurationId,
+      rewardIndex,
+      ...(branch.branchId ? { branchId: branch.branchId } : {}),
       idempotencyKey: key,
     })
       .unwrap()
       .then((redemption) => {
+        scanner.applyBalance(redemption.newBalance);
         scanner.goToRedeemComplete(redemption);
         stopCamera();
-        // Reset key after successful redemption
-        redemptionIdempotencyKeyRef.current = null;
+        redeemKey.clear();
       })
       .catch((err) => {
-        const message = (err.data?.error || err.error || 'Failed to redeem reward.') as string;
-        // Go back to resolved state with customer data
-        const customerData = scanner.customerData as CustomerForTransactionResponse;
-        scanner.goToResolved({ credential: '', customerData, branchId: scanner.branchId });
-        scanner.setError(message);
+        // Stay on the confirm step and keep the key, so a retry is idempotent.
+        scanner.setError(t(transactionErrorKey(err, 'redeem')));
       })
       .finally(() => setBusy(false));
   }
@@ -274,15 +259,20 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
     scanner.reset();
     setManualCredential('');
     setPurchaseAmountInput('');
+    setAmountError(undefined);
+    setEarnSuccess(undefined);
     permissionRequestedRef.current = false;
   }
+
+  // Keep the refs used by the effects pointing at the latest closures.
+  resetRef.current = reset;
+  handleScannedQrRef.current = handleScannedQr;
 
   // Scan another customer
   function scanAnother() {
     reset();
-    // Reset both idempotency keys for new customer
-    transactionIdempotencyKeyRef.current = null;
-    redemptionIdempotencyKeyRef.current = null;
+    earnKey.clear();
+    redeemKey.clear();
     // Re-open camera after brief delay
     setTimeout(() => {
       if (isOpen) {
@@ -316,8 +306,7 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
         setShowRegistrationModal(false);
       })
       .catch((err) => {
-        const message = (err.data?.error || err.error || t('registrationFailed')) as string;
-        scanner.setError(message);
+        scanner.setError(t(readApiError(err).status === 409 ? 'customerAlreadyExists' : 'registrationFailed'));
       })
       .finally(() => setBusy(false));
   }
@@ -355,9 +344,8 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
         });
         setRegistrationResult(null);
       })
-      .catch((err) => {
-        const message = (err.data?.error || err.error || t('failedToResolveCustomer')) as string;
-        scanner.setError(message);
+      .catch(() => {
+        scanner.setError(t('failedToResolveCustomer'));
       })
       .finally(() => {
         setBusy(false);
@@ -365,33 +353,26 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
       });
   }
 
-  // Helper to safely go back to resolved state
+  // Back to the resolved customer (keeps credential and customer data)
   function goBackToResolved() {
-    const customerData = scanner.customerData as CustomerForTransactionResponse | undefined;
-    if (customerData) {
-      scanner.goToResolved({ credential: '', customerData, branchId: scanner.branchId });
+    if (scanner.customerData) {
+      scanner.goToCustomer();
     } else {
       scanner.goToScan();
     }
-    // Reset both idempotency keys when going back
-    transactionIdempotencyKeyRef.current = null;
-    redemptionIdempotencyKeyRef.current = null;
-  }
-
-  // Helper to safely go back to calculate state
-  function goBackToCalculate() {
-    const customerData = scanner.customerData as CustomerForTransactionResponse | undefined;
-    const earnings = scanner.earnings as CalculateEarningsResponse | undefined;
-    if (customerData && earnings) {
-      scanner.goToCalculate({ purchaseAmount: scanner.purchaseAmount || 0, earnings });
-    } else {
-      goBackToResolved();
-    }
-    // Reset transaction key when going back
-    transactionIdempotencyKeyRef.current = null;
   }
 
   // Render the appropriate content based on current step
+  const manualEntry = (
+    <ManualCredentialEntry
+      credential={manualCredential}
+      onChange={setManualCredential}
+      onSubmit={handleScanFromManual}
+      isBusy={busy}
+      errorMessage={scanner.errorMessage}
+    />
+  );
+
   const renderContent = (): ReactNode => {
     switch (scanner.step) {
       case 'scan':
@@ -401,31 +382,31 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
               videoRef={videoRef} 
               onScannedQr={handleScannedQr}
             />
-            <ManualCredentialEntry
-              credential={manualCredential}
-              onChange={setManualCredential}
-              onSubmit={handleScanFromManual}
-              isBusy={busy}
-              errorMessage={scanner.errorMessage}
-            />
+            {manualEntry}
           </div>
         );
 
       case 'permission':
         return (
-          <ScannerPermissionState
-            onRetry={reset}
-            onClose={onClose}
-          />
+          <div className="space-y-6">
+            <ScannerPermissionState
+              onRetry={reset}
+              onClose={onClose}
+            />
+            {manualEntry}
+          </div>
         );
 
       case 'error':
         return (
-          <ScannerErrorState
-            errorMessage={scanner.errorMessage}
-            onRetry={reset}
-            onClose={onClose}
-          />
+          <div className="space-y-6">
+            <ScannerErrorState
+              errorMessage={scanner.errorMessage}
+              onRetry={reset}
+              onClose={onClose}
+            />
+            {manualEntry}
+          </div>
         );
 
       case 'resolved':
@@ -442,63 +423,34 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
         return (
           <CustomerScanResult
             customerData={scanner.customerData}
-            onRecordPurchase={() => scanner.goToCalculate({ purchaseAmount: 0, earnings: undefined as any })}
-            onRedeemReward={handleSelectReward}
-            onScanAnother={scanAnother}
-            errorMessage={scanner.errorMessage}
-          />
-        );
-
-      case 'calculate':
-        if (!scanner.customerData) return null;
-        return (
-          <CalculateEarningsStep
-            customerData={scanner.customerData}
-            purchaseAmountInput={purchaseAmountInput}
+            onEarn={() => handleEarnDirect(false)}
+            amountInput={purchaseAmountInput}
             onAmountChange={(value) => {
               setPurchaseAmountInput(value);
+              setAmountError(undefined);
               scanner.clearError();
             }}
-            onCalculate={handleCalculateEarnings}
+            amountError={amountError}
+            successMessage={earnSuccess}
             isBusy={busy}
-            errorMessage={scanner.errorMessage}
-            onBack={goBackToResolved}
-          />
-        );
-
-      case 'confirm':
-        if (!scanner.customerData || !scanner.earnings) return null;
-        return (
-          <ConfirmTransactionStep
-            customerData={scanner.customerData}
-            earnings={scanner.earnings}
-            onConfirm={handleCreateTransaction}
-            onBack={goBackToCalculate}
-            isBusy={busy}
-            errorMessage={scanner.errorMessage}
-          />
-        );
-
-      case 'complete':
-        if (!scanner.transaction || !scanner.customerData) return null;
-        return (
-          <TransactionCompleteStep
-            transaction={scanner.transaction}
-            customerData={scanner.customerData}
+            onRedeemReward={handleSelectReward}
             onScanAnother={scanAnother}
-            onClose={onClose}
+            onBalanceChange={scanner.applyBalance}
+            branch={branch}
+            errorMessage={scanner.errorMessage}
           />
         );
 
       case 'redeem-confirm':
-        if (!scanner.customerData) return null;
+        if (!scanner.customerData || !scanner.selectedReward) return null;
         return (
           <ConfirmRedemptionStep
             customerData={scanner.customerData}
-            rewardId={scanner.selectedRewardId || ''}
+            selectedReward={scanner.selectedReward}
             onConfirm={handleRedeemReward}
             onCancel={goBackToResolved}
             isBusy={busy}
+            branchBlocked={branch.blocked}
             errorMessage={scanner.errorMessage}
           />
         );
@@ -531,6 +483,20 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
           {renderContent()}
         </div>
       </Modal>
+
+      {/* Repeat-scan warning: the same idempotency key is reused on confirmation */}
+      <ConfirmDialog
+        isOpen={isOpen && scanner.step === 'resolved' && scanner.repeatWarningOpen}
+        title={t('repeatScanTitle')}
+        message={t('repeatScanMessage')}
+        confirmLabel={t('repeatScanConfirm')}
+        isPending={busy}
+        onConfirm={() => {
+          scanner.closeRepeatWarning();
+          handleEarnDirect(true);
+        }}
+        onCancel={scanner.closeRepeatWarning}
+      />
 
       {/* Registration Modal */}
       <RegistrationFormModal

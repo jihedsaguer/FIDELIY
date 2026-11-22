@@ -14,18 +14,16 @@ export interface ProfileData {
 }
 
 /**
- * Extended membership with programme configuration for display
+ * Membership as returned by the API: balance and rewards come from the backend.
  */
-export interface DisplayMembership extends CustomerMembership {
-  nextRewardThreshold?: number;
-  stampThreshold?: number;
-}
+export type DisplayMembership = CustomerMembership;
 
 /**
  * Props for LoyaltyCard component
  */
 export interface LoyaltyCardProps {
-  membership: DisplayMembership;
+  membership: CustomerMembership;
+  isFeatured?: boolean;
 }
 
 /**
@@ -36,6 +34,8 @@ export interface QRCodeDisplayProps {
   size?: number;
   className?: string;
   showPlaceholder?: boolean;
+  label?: string;
+  displaySize?: string | number;
 }
 
 /**

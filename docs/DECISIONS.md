@@ -16,6 +16,8 @@ This document records all major architectural decisions made during Phase 0 and 
 
 ### 1. Frontend: React 18 + Vite + TypeScript
 
+> **Superseded in part (2026-11-21):** the frontend runs React 19; see #17.
+
 **Decision:** Use React 18 with Vite build tool and TypeScript for type safety.
 
 **Rationale:**
@@ -62,6 +64,8 @@ admin, shared (guards, utils, error handling), database (Drizzle schema)
 
 ### 3. Database: PostgreSQL + Drizzle ORM
 
+> **Superseded in part (2026-11-21):** Supabase is not the current development database; see #18.
+
 **Decision:** Use PostgreSQL with Drizzle ORM, pg driver (node-postgres) for development.
 
 **Rationale:**
@@ -85,6 +89,10 @@ admin, shared (guards, utils, error handling), database (Drizzle schema)
 ---
 
 ### 4. Authentication: Better Auth (Official) with Phone Number Plugin + Email/Password
+
+> **Superseded in part:** the immutable `user.userType` field below was replaced by account-table capabilities in #11 (the code has no `userType`); phone OTP is deferred to Release 2 by #16 (2026-11-21 reconciliation).
+
+> **Release 1 note (Decision #16):** customer phone numbers are unique identifiers and are not OTP-verified in Release 1; OTP verification is deferred to Release 2. The OTP wording below describes the Release 2 verification path.
 
 **Decision:** Use Better Auth with official Phone Number plugin for customers and email/password for merchants. Single instance; no separate identity system.
 
@@ -144,6 +152,8 @@ Account separation enforced by:
 ---
 
 ### 6. SMS Provider: Pending Tunisian +216 Validation
+
+> **Release 1 note (Decision #16):** SMS/OTP delivery is deferred to Release 2 and does not block Release 1.
 
 **Decision:** Research and select SMS provider supporting Tunisia (+216) for customer phone OTP.
 
@@ -244,11 +254,13 @@ src/features/
 
 **Status:** ✅ **APPROVED**
 
-**Evidence:** Documented in `docs/PROJECT_STRUCTURE.md`
+**Evidence:** Documented in `docs/ARCHITECTURE.md` (frontend structure) and `docs/DESIGN_SYSTEM.md`
 
 ---
 
 ### 10. UI Component Library: shadcn/ui
+
+> **Superseded (2026-11-21):** shadcn/ui was removed; the UI uses in-repo primitives; see #17.
 
 **Decision:** Use shadcn/ui (headless UI components) as primary UI foundation.
 
@@ -350,13 +362,156 @@ merchant_accounts (capability)
 ### 14. Checkpoint 6B-B: Secure Customer QR Credentials and Internal Loyalty Ledger Foundation
 
 **Decision:**
-1. **Secure Customer QR Credentials:** Store credentials as SHA-256 hex hashes in `customer_qr_credentials.credential_hash`. Return the raw 43-character base64url secret only once upon initial issuance or rotation. Customer read endpoint returns status metadata only (`{ issuedAt, active: true }`). Merchant QR resolution endpoint compares the presented credential's SHA-256 hash against active records in the database and verifies active business membership.
+1. **Secure Customer QR Credentials (return-once and status-only parts superseded by #20):** Store credentials as SHA-256 hex hashes in `customer_qr_credentials.credential_hash`. Return the raw 43-character base64url secret only once upon initial issuance or rotation. Customer read endpoint returns status metadata only (`{ issuedAt, active: true }`). Merchant QR resolution endpoint compares the presented credential's SHA-256 hash against active records in the database and verifies active business membership.
 2. **Internal Loyalty Ledger:** Create immutable transaction headers (`loyalty_transactions`) and typed signed entries (`loyalty_activity_entries`) referencing exact `program_configurations.id` records. Enforce append-only integrity via PostgreSQL triggers (`reject_loyalty_ledger_mutation`). Enforce business-scoped idempotency via `(business_id, idempotency_key)` uniqueness and deterministic SHA-256 canonical request fingerprinting. Execute ledger operations in serializable transactions with bounded retry for both PostgreSQL serialization conflicts (`40001`) and deadlock detections (`40P01`). Enforce full reversal integrity (single reversal per transaction via partial unique index, single reversal per activity entry via partial unique index, full entry set coverage, and exact inverse delta matching `delta = -original.delta`).
 3. **Internal Service Boundary:** Maintain `LoyaltyLedgerService` as an internal service foundation without client-facing or merchant-facing write routes, earning formulas, balance projections, or reward redemptions.
 
 **Status:** Implemented for Checkpoints 6B-B and 6B-B.1.
 
 **Evidence:** `backend/src/features/loyalty/loyalty-ledger.service.ts`, `backend/src/shared/security/customer-qr.ts`, migrations `0007_secure_customer_qr_loyalty_ledger.sql` and `0008_full_reversal_integrity.sql`, `test/unit/loyalty-ledger.service.spec.ts`, `test/unit/tenant-context.service.spec.ts`, and `test/loyalty-ledger.integration.spec.ts`.
+
+---
+
+### 15. Checkpoint 6B-C: Stamp Earning, Reward Redemption, and Loyalty Corrections
+
+**Decision (approved business rules):**
+
+1. **Workflow.** The merchant scans the customer's personal QR, the server resolves the customer and verifies active membership, the merchant records the purchase (and, for redemption, selects a reward), and the server calculates and writes one atomic ledger transaction. The server never trusts client-supplied earning results.
+2. **Stamp earning.** A confirmed qualifying purchase awards **exactly one stamp**. The purchase amount never determines the number of stamps. For stamp-only programmes the purchase amount is **optional**; when supplied it is stored. `purchasesPerStamp` is **deprecated** for the new earning rules and must not be used to calculate new stamps. Historical programme versions and the transaction references to them are preserved unchanged. If an existing active configuration needs conversion, a **new programme version** is created through the existing versioning mechanism; historical configuration rows are never rewritten.
+3. **Points earning.** The purchase amount is **required** for programmes that include points. Points = `floor(amount_millimes x rate / 1000)` using integer arithmetic only. The earning rate keeps at most **two decimal places** and is applied as an integer number of hundredths (`floor(millimes x rate_hundredths / 100000)`). Fractions of a point are discarded (round down).
+4. **Combined programmes.** Stamps and points accumulate independently on each purchase and keep independent balances. Each reward costs exactly one currency (stamps **or** points), never a mix.
+5. **Money.** Monetary values are held as **integer millimes** (TND has three decimal places), stored as `bigint`. API requests carry amounts as **decimal strings** (e.g. `"12.500"`), validated as positive with at most 3 decimal places and converted to millimes once at the API boundary. No floating-point arithmetic and no silent rounding to two decimals.
+6. **Transaction record and history.** The supplied purchase amount is stored in integer millimes on the transaction header. Each entry keeps its exact `program_configurations.id` (immutable programme version), and each earning stores an **explicit earning-rate snapshot** (rule 14). Historical ledger entries are authoritative: **past earnings are never recalculated with current programme rules**, and programme changes affect only future transactions.
+7. **Rewards.** Multiple rewards per programme are stored as reward thresholds in the versioned programme configuration (no separate `rewards` table, no reward codes, no reward inventory in Release 1). The merchant selects a reward; the server verifies the customer's balance in the same serializable transaction, deducts the reward's cost and preserves any surplus. Redemptions are recorded as their own transaction category (`redemption`), not as a manual adjustment. Rewards are redeemable at any branch of the business.
+8. **Reversals (corrections).** The business owner may reverse any transaction of their business at any time (no time limit), in **full only** (no partial edits; to correct, reverse and re-enter). A reversal:
+   - references its original transaction and can occur **once** per transaction;
+   - is idempotent (a retry with the same idempotency key returns the same result; a second reversal with a new key is rejected);
+   - is **final**: a reversal cannot itself be reversed in Release 1, and reversal chains are not introduced (a wrongly reversed transaction is corrected by recording a new transaction);
+   - requires a **reason**: free text, required, maximum 500 characters, stored on the reversal transaction and shown in history;
+   - must never produce a negative balance in any currency. Reversing an earning that has already been spent is refused until the dependent redemption is reversed first. Reversing a redemption restores its deducted balance.
+9. **Abuse protection.** Idempotency keys, positive and precision-validated amounts, and a **warning with explicit merchant confirmation** when the same customer was already awarded at the same business within the previous **10 minutes**. The warning requires explicit merchant confirmation to proceed; a close repeat purchase is legitimate, so it is never blocked automatically. No default per-transaction or points cap is imposed; server-side limits apply only when a merchant-configurable limit exists.
+10. **Transaction limits.** The `limits.maxPerTransaction` setting read by the existing earning code is not part of the programme configuration DTOs or the merchant programme UI and is unreachable. It is removed from 6B-C scope.
+11. **Expiry.** No expiry enforcement in Release 1. `stampExpirationDays` and `pointsExpirationDays` remain accepted but unenforced; optional reward expiry from PRODUCT.md is deferred.
+12. **Branch.** A branch is recorded on a transaction when the business has more than one branch; membership and programme remain business-level (Decision 13).
+13. **Explicitly not in 6B-C.** Manual stamp/point issuance, email confirmation of transactions, customer-initiated redemption, reward codes/inventory, expiry, configurable transaction limits, reversal chains.
+14. **Earning-rate snapshot (required).** The database does **not** guarantee that a programme configuration is immutable (verified, see below), so the earning rate is not derived from the referenced configuration alone. Each earning entry stores an explicit snapshot of the rule applied: for points, the integer earning rate in hundredths of a point per TND; for stamps, the fixed rule of one stamp. The `program_configurations.id` reference is kept as well. Where the snapshot is stored (entry or header) is settled in the implementation plan.
+15. **Programme-version immutability finding (verified against migrations 0005-0011 and `programs.service.ts`).**
+    - *Present:* application code only `INSERT`s into `program_configurations`; a new version creates new rows; `updateProgram` changes only programme name and description; `deleteProgram` deletes configurations only when no ledger entry references them; the foreign key `loyalty_activity_entries.program_configuration_id` is `ON DELETE RESTRICT`; RLS on `program_configurations` defines only `SELECT` and `INSERT` policies (not relied on, because the local application role has `BYPASSRLS`).
+    - *Absent:* no trigger or privilege restriction prevents an `UPDATE` of `program_configurations.settings` (unlike the ledger tables, which have append-only triggers).
+    - *Conclusion:* immutability is an application convention, not a database guarantee. A database-level immutability guard could be added as complementary hardening; whether to add it is left to the implementation plan and does not remove the snapshot requirement of rule 14.
+
+**Rationale:** Stamps replace paper cards, so the counter flow stays one tap; recording the amount preserves transaction information without complicating stamps. Integer millimes avoid rounding drift. Owner-only operation means correction needs an audit trail rather than a time limit; the append-only ledger already enforces exact full reversal.
+
+**Alternatives rejected:** stamps proportional to amount; a `rewards` table and one-time reward codes; a 24-hour reversal window; automatic time-based blocking of repeat scans; default points/transaction caps; two-decimal currency storage.
+
+**Status:** APPROVED (rules). Backend implemented 2026-11-21 (see evidence below); migrations 0012-0014 applied to the local Docker database 2026-11-21; frontend pending.
+
+**Implementation settled (2026-11-21, approved plan):** rate snapshot on `loyalty_activity_entries.earning_rate_hundredths` (points earnings only); `redemption` enum value in its own migration (0012); header columns `purchase_amount_millimes` and `reversal_reason` (0013); UPDATE-rejecting trigger on `program_configurations` (0014); rewards identified by `{ configurationId, rewardIndex }` and re-read server-side; `purchasesPerStamp` optional and ignored for earning (no rows rewritten, no versions created); `branchId` required only when the business has more than one branch.
+
+**Existing behaviour before 6B-C (historical, replaced 2026-11-21)** - `backend/src/features/merchants/merchant-transaction.service.ts`, `merchants.controller.ts` (`customers/resolve-for-transaction`, `transactions/calculate-earnings`, `transactions`, `transactions/redeem-reward`), `backend/src/features/loyalty/customer-balance.service.ts`, `frontend/src/features/loyalty/scanner/`:
+- Earning uses one reused `purchaseAmount` field: stamps = `floor(amount / purchasesPerStamp)` (treating the amount as a visit count) and points = `floor(amount x pointsPerCurrencyUnit)` in floating point. Both conflict with rules 2, 3 and 5.
+- The amount is used only for the calculation and is not persisted on the ledger.
+- Redemption queries a `rewards` table that no migration creates, so it always fails with "Reward not found"; if it succeeded it would record `manual_adjustment`.
+- `CustomerBalanceService.redeemReward` (customer-initiated) is not routed to any controller.
+- The ledger supports full reversal (Decision 14) but no route exposes it; no reason is stored.
+- Expiry fields are stored but unenforced.
+- No unit or integration tests were found for the transaction/redemption service or its endpoints.
+
+**Schema changes required (written as migrations 0012-0014 on 2026-11-21; applied to the local Docker database the same day):**
+- `loyalty_transactions`: add nullable `purchase_amount_millimes bigint` (>= 0 when present; business rule requires it for points programmes).
+- `loyalty_transactions`: add a reversal reason text column (<= 500 characters), required when `category = 'reversal'` and null otherwise.
+- `loyalty_transaction_category`: add `redemption`.
+- Explicit earning-rate snapshot stored with each earning (rule 14); storage location to be settled in the implementation plan.
+- Reward thresholds and rates are read from the versioned programme settings; no new table.
+
+**Implementation dependencies and risks:** reversal route and history screen; replacing the amount/stamp logic and the floating-point points calculation; removing reliance on the missing `rewards` table; handling existing programmes that store `purchasesPerStamp`; migration or handling of active configurations that still store `purchasesPerStamp` (new programme version only); tests for earning, redemption and reversal (mandatory critical path per AGENTS.md).
+
+**Evidence:** `backend/src/shared/money/index.ts`, `backend/src/features/loyalty/earning-calculator.ts`, `backend/src/features/loyalty/loyalty-ledger.service.ts`, `backend/src/features/merchants/merchant-transaction.service.ts`, migrations `0012`-`0014`; unit specs `test/unit/money.spec.ts`, `earning-calculator.spec.ts`, `loyalty-ledger.service.spec.ts`, `merchant-transaction.service.spec.ts` (pass); `test/merchant-transaction.integration.spec.ts` written, not run (migrations 0012-0014 are applied locally; RLS not provable locally).
+
+---
+
+### 16. Release 1 Customer Phone Identity: OTP Verification Deferred
+
+**Decision:** In Release 1 a customer's phone number is a **unique identifier**, not verified phone ownership. Both **customer self-registration** and **merchant-assisted registration** are supported. **OTP verification is deferred to Release 2.** Successful OTP verification is not a Release 1 registration or sign-in requirement, and no Release 1 behaviour may assume the phone number is verified.
+
+**Supersedes in Release 1:** the OTP wording of Decisions #4 and #6 and the Change Log entry of 2026-11-01. Those describe the Better Auth Phone Number plugin and SMS provider integration, which remain the intended Release 2 verification path; selecting an SMS vendor (#6, V1) no longer blocks Release 1.
+
+**Implementation evidence:** migration `0010_phone_unverified_provisioning.sql` (customer accounts provisioned with `phone_verified = false`), `POST /auth/phone/sign-in` (phone number only), `register-customer.dto.ts` and `merchant-customer-registration.service.ts` (merchant-assisted registration).
+
+**Consequence:** phone ownership is not proven in Release 1; this is an accepted scope limitation until OTP is delivered in Release 2.
+
+**Status:** APPROVED
+
+---
+
+### 17. Frontend Stack: React 19 and In-Repo UI Components
+
+**Date:** 2026-11-21 (verified against `frontend/package.json`, `frontend/src/components/ui`, commit `cd0aa31`)
+
+**Decision:** The frontend uses React 19, Vite, TypeScript, Tailwind CSS 4, Redux Toolkit and React Router 7. UI is built from in-repo primitives under `frontend/src/components/ui` plus `lucide-react`, `clsx` and `tailwind-merge`. shadcn/ui dependencies were removed in commit `cd0aa31`; shadcn/ui is not part of the current implementation.
+
+**Supersedes:** the React 18 version in #1 and the shadcn/ui choice in #10. Both remain above as history.
+
+**Status:** APPROVED (user, 2026-11-21)
+
+---
+
+### 18. Database Environments: Docker PostgreSQL Locally, Neon for Deployment
+
+**Date:** 2026-11-21 (verified against `docker-compose.yml`; the repository contains no Supabase code or configuration)
+
+**Decision:** Local development uses Docker Compose PostgreSQL 16 (`postgres:16-alpine`, service `postgres`). Neon is the planned deployment database. Supabase is not part of the current architecture. Only standard PostgreSQL features are used.
+
+**Supersedes:** the Supabase development references in #3 and pending validation V3. No Neon-specific code or configuration exists yet.
+
+**Status:** APPROVED (user, 2026-11-21)
+
+---
+
+### 19. Release 1 Business Model: No Billing Enforcement
+
+**Date:** 2026-11-21
+
+**Decision:** Release 1 has no billing, subscription enforcement or plan limits, and transactions are cash-based. Future SaaS monetization is not ruled out; it is deferred and unspecified.
+
+**Supersedes:** the "subscription-based per-merchant; freemium" business-model line formerly in `PRODUCT.md`.
+
+**Status:** APPROVED (user, 2026-11-21)
+
+---
+
+### 20. Re-displayable Personal QR and Manual Short ID
+
+**Date:** 2026-11-22
+
+**Decision:** The customer can see the same personal QR again, and a merchant can type a short ID when scanning fails.
+1. **Derivation:** `credential = base64url(HMAC-SHA256(CUSTOMER_QR_SECRET, "fideliy:customer-qr:v1:" + customerAccountId + ":" + credentialRowId))` (32 bytes, 43 characters). The credential row id is generated explicitly (`randomUUID()`) and inserted explicitly; rotation inserts a new row (new id) and revokes the old one. There is no version counter.
+2. **Storage and merchant resolution unchanged:** only `sha256(credential)` is stored in `credential_hash`; the merchant lookup by hash is unchanged. The credential is never stored.
+3. **GET returns the current credential:** `GET /customers/personal-qr` returns `{ issuedAt, active: true, credential, shortCode }`, derived from the active row and verified in constant time against the stored hash. A mismatch (legacy random credential, or changed key) returns `credential: null, shortCode: null, requiresRotation: true`. Legacy credentials are not migrated: they keep resolving until the customer rotates once. Responses of GET, issue and rotate carry `Cache-Control: no-store`. Supersedes the "returned only once; status metadata only" part of #14 item 1.
+4. **Key:** `CUSTOMER_QR_SECRET` (hex or base64, at least 32 bytes) is a deployment secret separate from `BETTER_AUTH_SECRET`. Startup requires it in production only; elsewhere issue, rotate and GET fail with a clear error. An attacker holding the key and the database identifiers (customer account id, credential row id) can forge every active QR. Key compromise: replace the key and revoke all active credentials (documented only; no bulk-revoke script exists). Replacing the key without revoking makes every GET report `requiresRotation`, and old QRs keep resolving by hash.
+5. **Short ID:** derived from the same key with the label `fideliy:customer-qr-short:v1:` (same inputs), the first 10 characters (50 bits) in Crockford base32 (no I, L, O, U), shown as `XXXXX-XXXXX`. It changes whenever the QR is rotated. Only its SHA-256 (of the normalised 10 characters) is stored in nullable `customer_qr_credentials.short_code_hash` with a partial unique index over active rows; legacy rows have NULL until rotated. Input is normalised (uppercase, dashes and spaces stripped, O to 0, I and L to 1).
+6. **Merchant resolve:** `qrCredential` (resolve-for-transaction) and `credential` (resolve-qr) accept either the 43-character credential or the short ID, told apart by format. Membership checks and 404/409 behaviour are unchanged; unknown and malformed codes both give 404. No request field was renamed.
+7. **Open risk (not mitigated):** a 50-bit short ID is enumerable by an authenticated merchant. The only throttler (`RateLimitService`, in-memory, fixed 10 attempts per 10 minutes per key, used by phone sign-in) is not suited to this route and was not applied; no new subsystem was added. A DB leak also allows offline enumeration of 50-bit short ID hashes. A per-merchant limit on resolve attempts is needed before wide production use.
+
+**Status:** APPROVED (user, 2026-11-22); implemented.
+
+---
+
+### 21. Scanning a Personal QR Enrols the Customer (amends #15 rule 1 and #20 item 6)
+
+**Date:** 2026-11-22
+
+**Decision:**
+1. When a merchant validates a customer's personal QR (43-character credential or short ID) through `resolve-for-transaction`, an existing customer who is not a member of the merchant's business is enrolled as an active member. This replaces the 409 "must join first" and the 409 "membership not active" of that route.
+2. An inactive membership is reactivated on the same row (`status='active'`, `left_at=NULL`, `joined_at` unchanged) and a `joined` lifecycle event is appended. A new enrolment inserts one row and one `joined` event. An active member causes no write. All of it is idempotent.
+3. The "card" is the business-level `customer_business_memberships` row plus the ledger-computed balance. No new table and no zero-delta ledger row.
+4. The business must have an active programme: otherwise 404 and nothing is written (checked before any write). Unknown or malformed codes: 404, no write.
+5. `resolve-qr` stays a pure lookup. Earn, redeem and preview still require an active membership. The response gains `membership.enrolment` (`existing | joined | rejoined`); the scanner shows a notice when it is not `existing`.
+6. **Accepted risk:** short IDs enrol too, and no per-merchant rate limit exists (see #20 item 7). A merchant who guesses a valid short ID can enrol that customer (and see their name and phone) without any customer action. A per-merchant limit is needed before wide production use.
+7. **Recorded gap (RLS):** merchant-side INSERT/UPDATE policies on `customer_business_memberships` and `membership_lifecycle_events`, and non-member credential lookup, do not exist under RLS. This works locally only because the local role has `BYPASSRLS`; production under a non-bypass role needs a migration that was not made here.
+8. Customer-visible effect: the customer's membership list gains the business without a customer action; there is no customer notification in Release 1.
+
+**Status:** APPROVED (user, 2026-11-22); implemented.
 
 ---
 
@@ -456,6 +611,8 @@ const createCustomerSchema = z.object({
 
 ### V3: Supabase → Neon Migration Timing
 
+> **Resolved (2026-11-21):** Supabase is not the current architecture; local Docker PostgreSQL and planned Neon deployment are recorded in #18.
+
 **Status:** ⏳ **PENDING**
 
 **Question:** Migrate production database to Neon immediately post-launch (Phase 2A) or keep on Supabase indefinitely?
@@ -553,6 +710,8 @@ const createCustomerSchema = z.object({
 ## Decision Change Log
 
 ### 2026-11-01: Better Auth Phone OTP Implementation
+
+> **Superseded for Release 1 by Decision #16:** OTP verification is deferred to Release 2.
 
 **Previous Decision:** Custom phone OTP implementation required (Better Auth Phone Number plugin not available)
 

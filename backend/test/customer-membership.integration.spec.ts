@@ -334,15 +334,30 @@ integrationDescribe('Customer membership integration (PostgreSQL)', () => {
       .expect(201);
     expect(resolvedRotated.body.membership.status).toBe('active');
 
-    // 9. Ordinary retrieval returns metadata only, never the secret
+    // 9. GET returns the current (rotated) credential and short ID, never a hash
     const retrieved = await http
       .get('/customers/personal-qr')
       .set('Cookie', customer.cookie)
       .expect(200);
+    expect(retrieved.headers['cache-control']).toContain('no-store');
     expect(retrieved.body.active).toBe(true);
     expect(retrieved.body.issuedAt).toBeDefined();
-    expect(retrieved.body.credential).toBeUndefined();
+    expect(retrieved.body.credential).toBe(rotated.body.credential);
+    expect(retrieved.body.shortCode).toBe(rotated.body.shortCode);
     expect(retrieved.body.credentialHash).toBeUndefined();
+    expect(retrieved.body.shortCodeHash).toBeUndefined();
+
+    // 9b. Merchant resolves by short ID too; the revoked one no longer resolves
+    await http
+      .post('/merchants/customers/resolve-qr')
+      .set('Cookie', merchant.cookie)
+      .send({ credential: rotated.body.shortCode.toLowerCase() })
+      .expect(201);
+    await http
+      .post('/merchants/customers/resolve-qr')
+      .set('Cookie', merchant.cookie)
+      .send({ credential: first.body.shortCode })
+      .expect(404);
 
     // 10. Memberships list does not expose credential secret
     const memberships = await http

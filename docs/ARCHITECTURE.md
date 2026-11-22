@@ -9,7 +9,7 @@ FIDELIY is organized as a modular monolith with clear separation between fronten
 ```
 ┌────────────────────────────┐
 │   Customer/Merchant UI     │
-│ (React + Vite + shadcn/ui) │
+│ (React 19 + Vite)          │
 └──────────────┬─────────────┘
                │ REST API
 ┌──────────────▼─────────────┐
@@ -24,13 +24,13 @@ FIDELIY is organized as a modular monolith with clear separation between fronten
                │ SQL + RLS
 ┌──────────────▼─────────────┐
 │   PostgreSQL Database      │
-│ (Supabase dev, Neon prod)  │
+│ (Docker dev, Neon planned) │
 └─────────────────────────────┘
 ```
 
 ## 2. Technology Rationale
 
-### Frontend: React 18 + Vite + TypeScript
+### Frontend: React 19 + Vite + TypeScript
 - **Why:** Modern, fast build tool (Vite), strong TypeScript support, large ecosystem
 - **Alternatives Considered:** Vue (smaller, but less enterprise adoption), Next.js (rejected: adds server-side complexity; we use stateless backend)
 - **Choice:** React + Vite provides best DX for SPAbased UI
@@ -43,15 +43,16 @@ FIDELIY is organized as a modular monolith with clear separation between fronten
 ### Database: PostgreSQL + Drizzle ORM
 - **Why:** ACID transactions for loyalty integrity, RLS for multi-tenancy, Drizzle portability between providers
 - **PostgreSQL Rationale:** Relational model matches domain; ACID ensures transaction integrity; RLS provides native multi-tenant isolation
-- **Drizzle Rationale:** Full TypeScript support, SQL-like API, zero abstraction overhead, portable between Supabase and Neon
+- **Drizzle Rationale:** Full TypeScript support, SQL-like API, zero abstraction overhead, portable across standard PostgreSQL hosts (local Docker, Neon)
 - **Alternatives Considered:** Prisma (less control, harder to debug complex queries), MongoDB (no RLS, ACID is harder)
 - **Choice:** Postgres + Drizzle + pg driver (node-postgres) for development; Neon HTTP driver available for serverless
 
 ### Authentication: Better Auth with Phone Number Plugin + Email/Password
+- **Release 1 scope (DECISIONS #16):** customer phone numbers are unique identifiers and are not OTP-verified; OTP/SMS verification is deferred to Release 2. The OTP details below describe the Release 2 verification path.
 - **Why:** Official plugin for phone OTP (production-ready), framework-agnostic, extensible
 - **Phone OTP:** Better Auth Phone Number plugin with custom SMS provider integration (sendOTP callback)
 - **Merchant Email:** Better Auth email/password provider with email verification
-- **Account Separation:** Single Better Auth instance with immutable `user.userType` field; role-based guards in NestJS
+- **Account Separation:** Single Better Auth instance on `users`; capabilities come from the `customer_accounts` and `merchant_accounts` tables; role-based guards in NestJS
 - **Alternatives Considered:** Firebase (vendor lock-in), Auth0 (expensive), custom auth (risky, time-consuming)
 - **Choice:** Better Auth balances simplicity, security, and extensibility
 
@@ -130,9 +131,48 @@ The repository is aligned to a feature-owned backend structure under `backend/sr
 
 The setup response is `{ status, business, branches }`. `status` is `required` with `business: null` when no business exists, `in_progress` until validated completion, and `complete` afterward. `phonePubliclyDisplayed` defaults to false; `phoneVisibilityConfigured` separately reports whether the merchant explicitly chose true or false. Mutations never accept a merchant or owner ID from the client.
 
+#### Programme management contract (`/programs`)
+
+Verified by reading `programs.controller.ts`, `programs.service.ts`, the DTOs and migration 0011 (not by running the API). All routes use `MerchantGuard`; the business is derived from the session user, never from the client; every query runs through `TenantContextService`. `GET /programs/current` and `/history` are declared before `/:programId`.
+
+| Route | Body | Behaviour |
+| --- | --- | --- |
+| `GET /programs/current` | none | Active programme, or `null` when none exists (the empty-body HTTP rendering of `null` was not re-tested). |
+| `GET /programs/history` | none | All versions, newest first. |
+| `GET /programs` | none | `{ programs, total }`. |
+| `GET /programs/:programId` | none | One programme of the business; 404 if not found. |
+| `POST /programs` | `{ type, configurations, name?, description? }` | Creates version 1. 409 if an active programme exists. |
+| `POST /programs/versions` | same | Deactivates the active programme and inserts `version + 1`. 404 if none is active. |
+| `POST /programs/enhanced` | structured DTO (below) | Creates the initial programme when none is active, otherwise a new version; never returns 409. |
+| `PATCH /programs/:programId` | `{ name?, description? }` | Updates metadata only; 404 if not found. The body type is inline and unvalidated. |
+| `PATCH /programs/:programId/deactivate` | none | `{ success, message }`; 404 unless the programme is active. |
+| `DELETE /programs/:programId` | none | Only inactive programmes; 404 otherwise; 409 if any ledger entry references its configurations. Deletes configurations, then the programme. |
+
+- **Types:** `type` is `stamps | points | both`; `status` is `active | inactive`.
+- **Original format validation:** `configurations` must be a plain object containing exactly one plain-object entry per enabled type; otherwise 400.
+- **Enhanced DTO:** `name` (max 255), `description` (max 1000), `type`, `stamps`, `points`. Stamps: `earningRule { purchasesPerStamp (optional int, min 1; deprecated and ignored for earning by DECISIONS #15), description (max 500) }`, `rewardThresholds [{ stampsRequired (int, min 1), name (required, max 255), description (max 1000), isActive }]`, `stampExpirationDays` (int, min 1, or null). Points: `earningRule { pointsPerCurrencyUnit (min 0.01, max 2 decimals), currencyCode (max 3), description }`, `rewardThresholds [{ pointsRequired (int, min 1), ... }]`, `pointsExpirationDays`. Stamps are required for `stamps`/`both`; points for `points`/`both`.
+- **Response:** `{ id, businessId, name, description, type, version, status, activatedAt, deactivatedAt, createdAt, configurations: { stamps: {}, points: {} } }`; `name` and `description` are nullable.
+- **Rules:** one active programme per business; new rules create a new version and never rewrite history; deletion is refused once loyalty activity exists.
+- **Superseded defects:** an archived 2026-11 verification reported missing `name`/`description` columns, a `FOR UPDATE` aggregate error on delete, and array-vs-object `configurations`. Current source has the columns (migration 0011), no such query, and one response mapper.
+
+#### Frontend structure
+
+Verified from `frontend/src` (React 19 + Vite SPA, not Next.js):
+
+- `app/`: `store.ts`, `hooks.ts`, `providers.tsx`, `routes/{index.tsx,paths.ts,RouteGuards.tsx}` (lazy routes, central paths, session and capability guards)
+- `services/api/baseApi.ts`: RTK Query `createApi` with cookie credentials against `VITE_API_BASE_URL` (default `/api`, proxied to the backend by Vite); feature APIs inject endpoints into it
+- `components/ui`: shared primitives; `components/layout`: `AppLayout`, `PublicLayout`, `Sidebar`
+- `features/`: `auth`, `business-onboarding`, `customer`, `loyalty` (scanner, public QR landing), `merchant` (dashboard, programmes, branches, profile, settings; `features/merchants` is an empty duplicate directory)
+- `shared/i18n` (French and Arabic), `lib/utils.ts` (`cn`), `styles/`, `test-utils/`
+- Onboarding step state stays local to its page; server state lives in RTK Query.
+
+Conventions: feature folders `kebab-case`, component files `PascalCase.tsx`. Design conventions are in `docs/DESIGN_SYSTEM.md`.
+
 ## 4. Authentication & Authorization Architecture
 
 ### Single Better Auth Instance (No Separate Identity System)
+
+> Release 1 customer sign-in is phone-only (`POST /auth/phone/sign-in`, no OTP; DECISIONS #16). The snippet below shows the Release 2 OTP path.
 
 ```typescript
 // auth.ts
@@ -190,12 +230,12 @@ merchant_accounts (capability)
 ```typescript
 // CustomerGuard
 - Checks: customer_accounts record exists for user
-- Validates: Phone verification status
+- Does not check phone verification in Release 1 (DECISIONS #16)
 - Enforces: RLS context for customer tenant
 
 // MerchantGuard
 - Checks: merchant_accounts record exists for user
-- Validates: Email verification status
+- Checks the capability record only
 - Enforces: RLS context for merchant tenant
 ```
 
@@ -211,36 +251,7 @@ merchant_accounts (capability)
 
 ## 5. Multi-Tenancy via PostgreSQL RLS
 
-**Row-Level Security Policies:**
-
-```sql
--- All tables with merchant tenant:
-CREATE POLICY merchant_isolation
-ON transactions
-FOR SELECT
-TO authenticated
-USING (
-  (SELECT user_type FROM users WHERE id = auth.uid()) = 'merchant'
-  AND business_id IN (SELECT business_id FROM merchants WHERE user_id = auth.uid())
-)
-
--- All tables with customer tenant:
-CREATE POLICY customer_isolation
-ON enrollments
-FOR SELECT
-TO authenticated
-USING (
-  (SELECT user_type FROM users WHERE id = auth.uid()) = 'customer'
-  AND customer_id = (SELECT id FROM customers WHERE user_id = auth.uid())
-)
-```
-
-**RLS Context Setup (NestJS):**
-```typescript
-// In shared/database/rls.service.ts
-await db.execute(sql`SET rls.current_user_id = ${userId}`)
-await db.execute(sql`SET rls.current_user_type = ${userType}`)
-```
+Isolation uses a transaction-local setting, not Supabase-style `auth.uid()`. `TenantContextService.executeWithContext` (`backend/src/shared/database/tenant-context.service.ts`) runs `set_config('app.user_id', userId, true)` inside the transaction, and policies compare `current_setting('app.user_id')::uuid`. The policy pattern, isolation levels and the local `BYPASSRLS` caveat are in `docs/DATABASE.md` section 4. CustomerGuard and MerchantGuard provide the application-layer check; database-level isolation is not yet verified as effective (the local role bypasses RLS).
 
 ## 6. Transaction Integrity and Loyalty Ledger Foundation (Checkpoint 6B-B)
 
@@ -250,7 +261,7 @@ Loyalty activity is recorded in an immutable, append-only ledger (`loyalty_trans
 - **Typed Signed Entries:** Store signed integer deltas (stamps, points) referencing exact `program_configurations.id` rows to preserve history across program version updates.
 - **Append-Only Triggers:** Database triggers (`reject_loyalty_ledger_mutation`) reject any `UPDATE` or `DELETE` statements on ledger records.
 - **Reversal Relationships:** Linked full compensating transactions referencing original headers and entries. Database partial unique indexes enforce at most one reversal per original transaction and at most one reversal per activity entry; the service validates full entry set coverage and exact inverse delta matching (`delta = -original.delta`).
-- **Internal Service Boundary:** `LoyaltyLedgerService` is strictly an internal service foundation; no client-facing or merchant-facing write routes exist in Checkpoint 6B-B.
+- **Internal Service Boundary:** `LoyaltyLedgerService` has no routes of its own; since Checkpoint 6B-C the merchant transaction routes (section 6.5) write through it.
 
 ### 6.2 Serializable Isolation and Concurrency
 - `TenantContextService.executeWithContext` supports configurable isolation levels (`read committed`, `serializable`, `repeatable read`).
@@ -264,11 +275,33 @@ Loyalty activity is recorded in an immutable, append-only ledger (`loyalty_trans
 - Same key + different fingerprint returns `409 ConflictException`.
 
 ### 6.4 Secure Customer QR Credential Lifecycle
-- Credentials generated as cryptographically strong 32-byte base64url tokens (43 characters).
-- Raw secret returned **only once** upon initial issuance or rotation.
-- Stored exclusively as 64-character SHA-256 hex digests (`credential_hash`).
-- Customer retrieval returns status metadata (`{ issuedAt, active: true }`), never secrets or hashes.
-- Merchant resolution (`POST /merchants/customers/resolve-qr`) hashes the presented token, performs index lookup, and verifies active business membership without exposing credentials.
+Rules: DECISIONS #20 (supersedes the return-once part of #14).
+- Credential derived, not random: `base64url(HMAC-SHA256(CUSTOMER_QR_SECRET, "fideliy:customer-qr:v1:" + customerAccountId + ":" + credentialRowId))` (43 characters). Short ID: same key, label `fideliy:customer-qr-short:v1:`, first 10 characters in Crockford base32, shown `XXXXX-XXXXX`. Helper: `backend/src/shared/security/customer-qr.ts`, used by customer issue/rotate, public join and merchant-assisted registration.
+- Stored exclusively as SHA-256 hex digests (`credential_hash`, `short_code_hash`); neither value is stored.
+- `GET /customers/personal-qr` returns `{ issuedAt, active: true, credential, shortCode }`, or `credential: null, shortCode: null, requiresRotation: true` for a legacy credential (hash mismatch); 404 when none. `POST /customers/personal-qr` (409 if active) and `POST /customers/personal-qr/rotate` return `{ credential, shortCode, issuedAt }`. All three send `Cache-Control: no-store`. Registration responses (`POST /merchants/customers/register`, public join) add `personalQrShortCode` next to `personalQrCredential` (new customers only).
+- Rotation inserts a new row (new id, so new credential and short ID) and revokes the old one.
+- Merchant resolution (`POST /merchants/customers/resolve-qr` with `credential`, `POST /merchants/customers/resolve-for-transaction` with `qrCredential`) accepts the 43-character credential or the short ID (normalised), looks up the matching hash column, unknown and malformed codes both return 404. `resolve-qr` is a pure lookup (membership status is reported, nothing is written); `resolve-for-transaction` enrols (DECISIONS #21): after the programme check it inserts an active membership (or reactivates an inactive one in place) and a `joined` lifecycle event, idempotently.
+- `CUSTOMER_QR_SECRET` is required in production (checked at startup in `main.ts`); never log or return it.
+
+#### Customer membership responses (`/customers/memberships`)
+`GET /customers/memberships` (list) and `GET /customers/memberships/:id` (detail, which adds `lifecycle`) return `{ id, status, joinedAt, leftAt, business: { name, logoUrl }, program: { type, version } | null, balance: { stamps, points }, rewards: [{ name, activityType, cost }] }`. `balance` is the ledger sum for that membership and business (`LoyaltyLedgerService.getBalance`); `rewards` lists the active reward thresholds of the active programme's configurations (`listRewards`; inactive or malformed thresholds omitted; `[]` when the business has no active programme). Additive change, no migration; join/leave responses use the same shape. The customer loyalty card renders its progress from these fields only.
+
+### 6.5 Merchant Transaction API (Checkpoint 6B-C, backend; migrations 0012-0014 applied to the local Docker database 2026-11-21)
+Rules: DECISIONS #15. All routes use `MerchantGuard`; the business is always derived from the session user. Amounts are TND decimal strings (`^\d+(\.\d{1,3})?$`, > 0), stored as integer millimes (`backend/src/shared/money`). Earning math lives in `backend/src/features/loyalty/earning-calculator.ts`; writes go through `LoyaltyLedgerService` (serializable), which also verifies non-negative balances and the repeat warning.
+
+| Route | Body / query | Behaviour |
+| --- | --- | --- |
+| `POST /merchants/customers/resolve-for-transaction` | `{ qrCredential }` (`branchId` accepted, unused) | Customer, membership `{ id, status, joinedAt, enrolment: 'existing' \| 'joined' \| 'rejoined' }` (enrols the customer when needed; 404 with no write when the business has no active programme), balance, `program { id, type, version, name, configurations { stamps?: { configurationId }, points?: { configurationId, earningRate } } }`, `rewards [{ configurationId, rewardIndex, name, activityType, cost, available }]` read from the stored `rewardThresholds` (a threshold with `isActive: false` is omitted). |
+| `POST /merchants/transactions/calculate-earnings` | `{ membershipId, purchaseAmount? }` | Preview only (no longer called by the scanner UI, which records directly via `POST /merchants/transactions`): `{ purchaseAmount, stampsToEarn, pointsToEarn, earningRate, totalStampsAfter, totalPointsAfter }`. |
+| `POST /merchants/transactions` | `{ membershipId, purchaseAmount?, branchId?, idempotencyKey, confirmRepeat? }` | One stamp per purchase (no `purchasesPerStamp`); points `floor(millimes x rateHundredths / 100000)`, amount required when the programme includes points. 409 `{ code: 'RECENT_EARNING_CONFIRMATION_REQUIRED' }` if the membership had a non-reversed purchase in the last 10 minutes and `confirmRepeat` is not `true`. Response `{ transactionId, membershipId, purchaseAmount, stampsEarned, pointsEarned, earningRate, newBalance, occurredAt (stored), idempotencyKey }`. |
+| `POST /merchants/transactions/redeem-reward` | `{ membershipId, configurationId, rewardIndex, branchId?, idempotencyKey }` | Cost re-read from the stored configuration of the business's active programme; deducted in that configuration's currency; surplus kept; 409 `Insufficient balance for this reward`; category `redemption`. |
+| `POST /merchants/transactions/:transactionId/reverse` | `{ reason (1-500), idempotencyKey }` | Full, once, final; 404 for another business's transaction; 400 for reversing a reversal; 409 for a second reversal or when reversing an already spent earning (reverse the redemption first). |
+| `GET /merchants/transactions` | `?membershipId=` (optional) | Newest first, at most 100: `{ transactions [{ id, membershipId, branchId, category, occurredAt, purchaseAmount, reversalReason, reversesTransactionId, reversedByTransactionId, stampsDelta, pointsDelta, entries [{ activityType, delta, programConfigurationId, earningRate }] }], summary? }`. `summary` is added only with `membershipId` (additive): `{ stamps, points: { earned, earningsReversed, redeemed, redemptionsReversed, adjustments, balance }, transactionCount, programType \| null, rewards [{ configurationId, rewardIndex, name, activityType, cost }] }`. Totals are computed in SQL over ALL ledger entries of the membership scoped by `business_id` (not just the 100 listed); each reversal counts under the category of the transaction it reverses (`earningsReversed`, `redemptionsReversed` positive amounts; a reversed adjustment folds into `adjustments`); `balance = earned - earningsReversed - redeemed + redemptionsReversed + adjustments` = the ledger sum. `rewards` come from the active programme configurations (same shape as resolve, without `available`). No pagination: the UI shows a "latest 100" note when `transactionCount > 100`. |
+| `GET /merchants/customers` | `?search=` (name or phone, case-insensitive, LIKE wildcards escaped, <= 100 chars), `?status=active\|inactive`, `?limit=` (default 25, max 100), `?offset=` | `{ items [{ membershipId, customer { name, phoneNumber }, status, joinedAt, leftAt, balance { stamps, points }, lastActivityAt \| null }], total }`. `MerchantGuard`; the business is the session merchant's (never a parameter; 404 when none). Ordered `joined_at DESC, id`. Balance is the ledger sum, `lastActivityAt` is the newest ledger transaction of the membership. Read-only; runs inside `TenantContextService.executeWithContext`. Needs migration `0016` under enforced RLS (DATABASE.md section 4). Frontend: `MerchantCustomersPage` (table from `md`, cards below), history in a modal through `GET /merchants/transactions?membershipId=`. |
+
+- `branchId` is required on earning and redemption when the business has more than one branch.
+- Idempotency fingerprint covers amount, reversal reason and the points rate snapshot; `confirmRepeat` is excluded, so a retry with the same key returns the stored transaction.
+- The frontend scanner (`frontend/src/features/loyalty/scanner/`) uses these shapes since Slice B (2026-11-22): decimal-string amounts, `RECENT_EARNING_CONFIRMATION_REQUIRED` confirmation, reward picker by `{ configurationId, rewardIndex }`, branch picker, per-customer history and reversal with a required reason. Verified by frontend tests against a stubbed `fetch`, not against the real backend.
 
 ## 7. Deployment & Scaling
 
@@ -293,9 +326,8 @@ Loyalty activity is recorded in an immutable, append-only ledger (`loyalty_trans
 |-----------|--------|-----------|
 | Single monolith (no microservices) | Harder to scale individual services | Phase 2: Extract services if needed |
 | Phone number as primary customer ID | Phone changes require account migration | Rare operation; handled via update flow |
-| Immutable userType | Cannot convert customer to merchant | User requirement; separate accounts if needed |
 | RLS at DB level only | Application layer also needs guards | Defense-in-depth approach; both layers enforced |
-| Supabase for development | Later migration to Neon needed | Drizzle abstracts DB; migration tested in Phase 1A |
+| Docker PostgreSQL locally, Neon planned for deployment | Neon behaviour (pooling, connection limits, roles) is not yet exercised | Standard PostgreSQL only; verify on Neon before deployment (DECISIONS #18) |
 
 ## 9. Risks & Mitigation
 

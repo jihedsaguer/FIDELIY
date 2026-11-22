@@ -32,6 +32,7 @@ services:
       DATABASE_URL: postgresql://fideliy_dev:${POSTGRES_PASSWORD}@postgres:5432/fideliy_dev
       BETTER_AUTH_URL: http://localhost:3000
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      CUSTOMER_QR_SECRET: ${CUSTOMER_QR_SECRET:-}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
     ports:
       - "3000:3000"

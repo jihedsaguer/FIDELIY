@@ -11,6 +11,6 @@ export const baseApi = createApi({
     baseUrl,
     credentials: 'include',
   }),
-  tagTypes: ['Session', 'CustomerProfile', 'MerchantProfile', 'BusinessSetup', 'Branch', 'Program'],
+  tagTypes: ['Session', 'CustomerProfile', 'MerchantProfile', 'BusinessSetup', 'Branch', 'Program', 'Transaction', 'MerchantCustomers'],
   endpoints: () => ({}),
 });

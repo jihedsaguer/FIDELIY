@@ -9,10 +9,7 @@ export type {
   ManualCredentialEntryProps,
   ScannerPermissionStateProps,
   ScannerErrorStateProps,
-  CalculateEarningsStepProps,
-  ConfirmTransactionStepProps,
   ConfirmRedemptionStepProps,
-  TransactionCompleteStepProps,
   RedemptionCompleteStepProps,
   CameraConfig,
 } from './types';

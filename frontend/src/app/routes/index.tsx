@@ -20,6 +20,7 @@ const MerchantBranchesPage = lazy(() => import('../../features/merchant/pages/Me
 const MerchantProgramsPage = lazy(() => import('../../features/merchant/pages/MerchantProgramsPage'));
 const MerchantCustomersPage = lazy(() => import('../../features/merchant/pages/MerchantCustomersPage'));
 const MerchantSettingsPage = lazy(() => import('../../features/merchant/pages/MerchantSettingsPage'));
+const MerchantMorePage = lazy(() => import('../../features/merchant/pages/MerchantMorePage'));
 const BusinessOnboardingRoute = lazy(() => import('../../features/business-onboarding/pages/BusinessOnboardingRoute'));
 const PublicQrLandingPage = lazy(() => import('../../features/loyalty/pages/PublicQrLandingPage'));
 
@@ -67,6 +68,7 @@ export default function AppRoutes() {
             <Route path={paths.merchantPrograms} element={<MerchantProgramsPage />} />
             <Route path={paths.merchantCustomers} element={<MerchantCustomersPage />} />
             <Route path={paths.merchantSettings} element={<MerchantSettingsPage />} />
+            <Route path={paths.merchantMore} element={<MerchantMorePage />} />
             <Route path="/merchant" element={<Navigate to={paths.merchantDashboard} replace />} />
           </Route>
           

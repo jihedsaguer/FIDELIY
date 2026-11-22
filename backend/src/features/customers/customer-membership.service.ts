@@ -4,10 +4,18 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { randomBytes } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { TenantContextService } from '../../shared/database/tenant-context.service';
-import { hashCustomerQrCredential } from '../../shared/security/customer-qr';
+import {
+  deriveCustomerQrCodes,
+  verifyCustomerQrCredential,
+} from '../../shared/security/customer-qr';
+import {
+  listRewards,
+  type ProgrammeConfiguration,
+} from '../loyalty/earning-calculator';
+import { LoyaltyLedgerService } from '../loyalty/loyalty-ledger.service';
 import { JoinBusinessDto } from './dto/customer-membership.dto';
 
 type MembershipStatus = 'active' | 'inactive';
@@ -35,6 +43,7 @@ interface DiscoveryRow {
 
 interface MembershipRow {
   id: string;
+  businessId: string;
   status: MembershipStatus;
   joinedAt: Date;
   leftAt: Date | null;
@@ -51,12 +60,21 @@ interface MembershipEventRow {
 
 export interface CredentialRow {
   credential: string;
+  shortCode: string;
   issuedAt: Date;
 }
 
+/**
+ * GET response. `credential` and `shortCode` are null with
+ * `requiresRotation: true` for a legacy (random) credential or one derived
+ * under a different key: it cannot be shown and must be rotated once.
+ */
 export interface PersonalQrCredentialStatus {
   issuedAt: Date;
   active: true;
+  credential: string | null;
+  shortCode: string | null;
+  requiresRotation?: true;
 }
 
 export interface BusinessDiscoveryResponse {
@@ -77,7 +95,10 @@ export interface BusinessDiscoveryResponse {
 
 @Injectable()
 export class CustomerMembershipService {
-  constructor(private readonly tenantContext: TenantContextService) {}
+  constructor(
+    private readonly tenantContext: TenantContextService,
+    private readonly ledger: LoyaltyLedgerService,
+  ) {}
 
   discoverBusiness(
     userId: string,
@@ -220,7 +241,9 @@ export class CustomerMembershipService {
             ORDER BY m.joined_at DESC, m.id`,
         [customer.id],
       );
-      return result.rows.map((row) => this.toMembershipResponse(row));
+      return Promise.all(
+        result.rows.map((row) => this.toMembershipResponse(connection, row)),
+      );
     });
   }
 
@@ -267,16 +290,36 @@ export class CustomerMembershipService {
   getPersonalQrCredential(userId: string): Promise<PersonalQrCredentialStatus> {
     return this.tenantContext.executeWithContext(userId, async (connection) => {
       const customer = await this.getCustomerAccount(connection, userId);
-      const result = await connection.query<PersonalQrCredentialStatus>(
-        `SELECT issued_at AS "issuedAt", true AS active
+      const result = await connection.query<{
+        id: string;
+        credentialHash: string;
+        issuedAt: Date;
+      }>(
+        `SELECT id, credential_hash AS "credentialHash", issued_at AS "issuedAt"
          FROM customer_qr_credentials
          WHERE customer_account_id = $1 AND revoked_at IS NULL`,
         [customer.id],
       );
-      if (!result.rows[0]) {
+      const row = result.rows[0];
+      if (!row) {
         throw new NotFoundException('Personal QR credential has not been issued');
       }
-      return result.rows[0];
+      const codes = deriveCustomerQrCodes(customer.id, row.id);
+      if (!verifyCustomerQrCredential(codes.credential, row.credentialHash)) {
+        return {
+          issuedAt: row.issuedAt,
+          active: true,
+          credential: null,
+          shortCode: null,
+          requiresRotation: true,
+        };
+      }
+      return {
+        issuedAt: row.issuedAt,
+        active: true,
+        credential: codes.credential,
+        shortCode: codes.shortCode,
+      };
     });
   }
 
@@ -293,20 +336,26 @@ export class CustomerMembershipService {
         );
       }
 
-      const credential = randomBytes(32).toString('base64url');
-      const inserted = await connection.query<CredentialRow>(
-        `INSERT INTO customer_qr_credentials (customer_account_id, credential_hash)
-         VALUES ($1, $2)
+      const credentialId = randomUUID();
+      const codes = deriveCustomerQrCodes(customer.id, credentialId);
+      const inserted = await connection.query<{ issuedAt: Date }>(
+        `INSERT INTO customer_qr_credentials
+           (id, customer_account_id, credential_hash, short_code_hash)
+         VALUES ($1, $2, $3, $4)
          ON CONFLICT (customer_account_id) WHERE revoked_at IS NULL DO NOTHING
          RETURNING issued_at AS "issuedAt"`,
-        [customer.id, hashCustomerQrCredential(credential)],
+        [credentialId, customer.id, codes.credentialHash, codes.shortCodeHash],
       );
       if (!inserted.rows[0]) {
         throw new ConflictException(
           'A personal QR credential was issued concurrently. Rotate it to issue a new credential.',
         );
       }
-      return { credential, issuedAt: inserted.rows[0].issuedAt };
+      return {
+        credential: codes.credential,
+        shortCode: codes.shortCode,
+        issuedAt: inserted.rows[0].issuedAt,
+      };
     });
   }
 
@@ -319,14 +368,20 @@ export class CustomerMembershipService {
          WHERE customer_account_id = $1 AND revoked_at IS NULL`,
         [customer.id],
       );
-      const credential = randomBytes(32).toString('base64url');
-      const result = await connection.query<CredentialRow>(
-        `INSERT INTO customer_qr_credentials (customer_account_id, credential_hash)
-         VALUES ($1, $2)
+      const credentialId = randomUUID();
+      const codes = deriveCustomerQrCodes(customer.id, credentialId);
+      const result = await connection.query<{ issuedAt: Date }>(
+        `INSERT INTO customer_qr_credentials
+           (id, customer_account_id, credential_hash, short_code_hash)
+         VALUES ($1, $2, $3, $4)
          RETURNING issued_at AS "issuedAt"`,
-        [customer.id, hashCustomerQrCredential(credential)],
+        [credentialId, customer.id, codes.credentialHash, codes.shortCodeHash],
       );
-      return { credential, issuedAt: result.rows[0].issuedAt };
+      return {
+        credential: codes.credential,
+        shortCode: codes.shortCode,
+        issuedAt: result.rows[0].issuedAt,
+      };
     });
   }
 
@@ -439,6 +494,7 @@ export class CustomerMembershipService {
 
   private membershipSelect(): string {
     return `SELECT m.id,
+                   m.business_id AS "businessId",
                    m.status,
                    m.joined_at AS "joinedAt",
                    m.left_at AS "leftAt",
@@ -474,12 +530,39 @@ export class CustomerMembershipService {
       [membership.id],
     );
     return {
-      ...this.toMembershipResponse(membership),
+      ...(await this.toMembershipResponse(connection, membership)),
       lifecycle: events.rows,
     };
   }
 
-  private toMembershipResponse(row: MembershipRow): Record<string, unknown> {
+  /**
+   * Balance (ledger sum) and rewards (active programme configurations) let the
+   * customer card show progress without any client-side thresholds.
+   */
+  private async toMembershipResponse(
+    connection: PoolClient,
+    row: MembershipRow,
+  ): Promise<Record<string, unknown>> {
+    const balance = await this.ledger.getBalance(
+      connection,
+      row.businessId,
+      row.id,
+    );
+    const configurations = await connection.query<ProgrammeConfiguration>(
+      `SELECT pc.id, pc.type, pc.settings
+       FROM program_configurations pc
+       JOIN programs p ON p.id = pc.program_id
+       WHERE p.business_id = $1 AND p.status = 'active'
+       ORDER BY pc.type`,
+      [row.businessId],
+    );
+    const rewards = configurations.rows.flatMap((configuration) =>
+      listRewards(configuration).map(({ name, activityType, cost }) => ({
+        name,
+        activityType,
+        cost,
+      })),
+    );
     return {
       id: row.id,
       status: row.status,
@@ -489,6 +572,8 @@ export class CustomerMembershipService {
       program: row.programType
         ? { type: row.programType, version: row.programVersion }
         : null,
+      balance,
+      rewards,
     };
   }
 
@@ -507,9 +592,9 @@ export class CustomerMembershipService {
   private async readPersonalQrCredential(
     connection: PoolClient,
     customerAccountId: string,
-  ): Promise<CredentialRow | undefined> {
-    const result = await connection.query<CredentialRow>(
-      `SELECT credential_hash AS credential, issued_at AS "issuedAt"
+  ): Promise<{ id: string } | undefined> {
+    const result = await connection.query<{ id: string }>(
+      `SELECT id
        FROM customer_qr_credentials
        WHERE customer_account_id = $1 AND revoked_at IS NULL`,
       [customerAccountId],

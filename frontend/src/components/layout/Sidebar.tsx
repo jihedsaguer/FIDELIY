@@ -16,6 +16,7 @@ import {
   ChevronDown,
   ChevronUp,
   User,
+  Users,
 } from 'lucide-react';
 
 type Workspace = 'customer' | 'merchant';
@@ -23,6 +24,7 @@ type Workspace = 'customer' | 'merchant';
 const merchantMainNavItems = [
   { to: paths.merchantDashboard, labelKey: 'home', icon: LayoutDashboard },
   { to: paths.merchantPrograms, labelKey: 'programs', icon: Award },
+  { to: paths.merchantCustomers, labelKey: 'customers', icon: Users },
 ] as const;
 
 const merchantMoreItems = [
@@ -40,12 +42,14 @@ export function Sidebar({ workspace, onSignOut }: SidebarProps) {
   const { t } = useI18n();
   const location = useLocation();
   const { openScanner } = useScanner();
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  // Below lg the content is offset by the collapsed width (md:ml-16), so start collapsed there.
+  const [isCollapsed, setIsCollapsed] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1024);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
 
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth < 1024) setIsCollapsed(true);
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);
@@ -66,11 +70,16 @@ export function Sidebar({ workspace, onSignOut }: SidebarProps) {
 
   const [isMoreExpanded, setIsMoreExpanded] = useState(false);
 
+  // On mobile, navigation is the bottom nav in AppLayout; no off-canvas sidebar or toggle.
+  if (isMobile) {
+    return null;
+  }
+
   return (
     <>
       {isMobile && !isCollapsed && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-[99]"
+          className="fixed inset-0 bg-black/50 z-[99]"
           onClick={toggleSidebar}
           aria-hidden="true"
         />
@@ -145,6 +154,24 @@ export function Sidebar({ workspace, onSignOut }: SidebarProps) {
           
           {/* More section - expandable */}
           <div className="flex flex-col gap-1">
+            {isCollapsed ? (
+              /* Collapsed (icon-only) sidebar can't show the submenu: link to the More page instead */
+              <NavLink
+                to={paths.merchantMore}
+                aria-label={t('more')}
+                className={({ isActive }) =>
+                  `flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 ${
+                    isActive
+                      ? 'bg-[var(--glass-brand)] text-[var(--brand)]'
+                      : 'text-[var(--text-muted)] hover:bg-[var(--subtle)] hover:text-[var(--text)]'
+                  }`
+                }
+              >
+                <span className="flex items-center justify-center w-6 h-6">
+                  <MoreHorizontal className="w-5 h-5" />
+                </span>
+              </NavLink>
+            ) : (
             <button
               className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200 text-left text-[var(--text-muted)] hover:bg-[var(--subtle)] hover:text-[var(--text)]"
               onClick={() => setIsMoreExpanded(!isMoreExpanded)}
@@ -164,6 +191,7 @@ export function Sidebar({ workspace, onSignOut }: SidebarProps) {
                 </span>
               )}
             </button>
+            )}
             
             {/* More items - shown when expanded */}
             {isMoreExpanded && !isCollapsed && (
@@ -218,7 +246,7 @@ export function Sidebar({ workspace, onSignOut }: SidebarProps) {
 
         <button
           onClick={toggleSidebar}
-          className="absolute -right-3 top-4 w-6 h-6 bg-[var(--surface)] border border-[var(--border)] rounded-full flex items-center justify-center shadow-md hover:bg-[var(--subtle)] transition-colors"
+          className="absolute -right-3 top-4 w-6 h-6 bg-[var(--surface)] border border-[var(--border)] rounded-full hidden lg:flex items-center justify-center shadow-md hover:bg-[var(--subtle)] transition-colors"
           aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {isCollapsed ? <Menu className="w-4 h-4" /> : <X className="w-4 h-4" />}

@@ -3,8 +3,7 @@
 
 import type {
   CustomerForTransactionResponse,
-  CalculateEarningsResponse,
-  CreateLoyaltyTransactionResponse,
+  RewardOption,
   RedeemRewardResponse,
 } from '../../api/merchantTransactionApi';
 
@@ -25,9 +24,6 @@ export type ScannerStep =
   | 'permission'        // Camera permission requested/denied
   | 'error'             // Camera initialization error
   | 'resolved'          // Customer resolved from QR
-  | 'calculate'         // Calculating earnings
-  | 'confirm'           // Confirm transaction before creation
-  | 'complete'          // Transaction completed
   | 'redeem-confirm'    // Confirm reward redemption
   | 'redeem-complete';  // Reward redemption completed
 
@@ -39,18 +35,24 @@ export interface ScannerState {
   qrCredential?: string;
   branchId?: string;
   customerData?: CustomerForTransactionResponse;
-  purchaseAmount?: number;
-  earnings?: CalculateEarningsResponse;
-  transaction?: CreateLoyaltyTransactionResponse;
+  /** Decimal string as validated by `validatePurchaseAmount` (e.g. "12.500"); absent for stamps-only without amount. */
+  purchaseAmount?: string;
   redemption?: RedeemRewardResponse;
-  selectedRewardId?: string;
+  selectedReward?: SelectedReward;
+  /** The 10-minute repeat-scan confirmation dialog is open (resolved step). */
+  repeatWarningOpen: boolean;
   errorMessage?: string;
+}
+
+export interface SelectedReward {
+  configurationId: string;
+  rewardIndex: number;
 }
 
 /**
  * Initial scanner state value (not type-only)
  */
-export const initialScannerState: ScannerState = { step: 'scan' };
+export const initialScannerState: ScannerState = { step: 'scan', repeatWarningOpen: false };
 
 /**
  * Props for ScannerViewport component
@@ -76,8 +78,8 @@ export interface ManualCredentialEntryProps {
  */
 export interface CustomerScanResultProps {
   customerData: CustomerForTransactionResponse;
-  onRecordPurchase: () => void;
-  onRedeemReward: (rewardId: string) => void;
+  onEarn: () => void;
+  onRedeemReward: (reward: RewardOption) => void;
   onScanAnother: () => void;
   errorMessage?: string;
 }
@@ -100,50 +102,16 @@ export interface ScannerPermissionStateProps {
 }
 
 /**
- * Props for CalculateEarningsStep component
- */
-export interface CalculateEarningsStepProps {
-  customerData: CustomerForTransactionResponse;
-  purchaseAmountInput: string;
-  onAmountChange: (value: string) => void;
-  onCalculate: () => void;
-  isBusy: boolean;
-  errorMessage?: string;
-  onBack: () => void;
-}
-
-/**
- * Props for ConfirmTransactionStep component
- */
-export interface ConfirmTransactionStepProps {
-  customerData: CustomerForTransactionResponse;
-  earnings: CalculateEarningsResponse;
-  onConfirm: () => void;
-  onBack: () => void;
-  isBusy: boolean;
-  errorMessage?: string;
-}
-
-/**
  * Props for ConfirmRedemptionStep component
  */
 export interface ConfirmRedemptionStepProps {
   customerData: CustomerForTransactionResponse;
-  rewardId: string;
+  selectedReward: SelectedReward;
   onConfirm: () => void;
   onCancel: () => void;
   isBusy: boolean;
+  branchBlocked?: boolean;
   errorMessage?: string;
-}
-
-/**
- * Props for TransactionCompleteStep component
- */
-export interface TransactionCompleteStepProps {
-  transaction: CreateLoyaltyTransactionResponse;
-  customerData: CustomerForTransactionResponse;
-  onScanAnother: () => void;
-  onClose: () => void;
 }
 
 /**

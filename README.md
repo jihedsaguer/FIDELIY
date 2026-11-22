@@ -1,142 +1,76 @@
 # FIDELIY: Digital Loyalty Platform
 
-A modern loyalty and rewards platform built for Tunisian SMBs, enabling merchants to create stamp cards, issue points, and manage customer rewards through a web dashboard.
+A loyalty and rewards platform for Tunisian SMBs: merchants create stamp and points programmes, customers carry one personal QR across businesses, and merchants scan it to award loyalty. Cash-based; no billing in Release 1.
 
 ## Status
 
-**Current engineering focus:** Backend restructuring and documentation consolidation are active. The canonical roadmap is `docs/ROADMAP.md` and it remains the source of truth for sprint, release, and backlog status.
+Release 1 is in progress. Current state, verified facts and the next task are in `docs/IMPLEMENTATION_STATUS.md`; releases and backlog are in `docs/ROADMAP.md`.
 
-**Release status:** Release 1 remains in progress. PB-19 and PB-20 are explicitly deferred.
+## What it does
 
-Historical roadmap artifacts remain in `docs/IMPLEMENTATION_PLAN.md`, but the maintained plan is the consolidated `docs/ROADMAP.md` document.
+- **Customers:** join loyalty programmes with their phone number (a unique identifier, not OTP-verified in Release 1), keep a personal QR, and view balances, rewards and history.
+- **Merchants:** set up a business, branches and programmes, scan customer QR codes to award stamps or points, and redeem rewards.
+- **Admins:** platform oversight (basic, Release 1).
 
-## What It Does
+## Technology stack
 
-- **For Customers:** Join loyalty programs via phone OTP, scan merchant QR codes to earn stamps/points, view balance and rewards.
-- **For Merchants:** Create and manage stamp card programs, view customer engagement, mark purchases and issue rewards.
-- **For Admins:** Platform oversight, merchant onboarding, support and reporting.
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 19, Vite, TypeScript, Tailwind CSS 4, Redux Toolkit (RTK Query); in-repo UI components |
+| Backend | NestJS modular monolith, class-validator |
+| Database | PostgreSQL 16 (Docker locally), Drizzle ORM and `pg`; Neon planned for deployment |
+| Authentication | Better Auth: phone number for customers, email and password for merchants |
+| Email | Resend |
+| SMS / OTP | Deferred to Release 2 |
 
-## Technology Stack
+Decision history: `docs/DECISIONS.md`.
 
-| Layer | Technology | Status |
-|-------|-----------|--------|
-| **Frontend** | React 18 + Vite + TypeScript | ✅ Approved |
-| **Backend** | NestJS + modular monolith | ✅ Approved |
-| **Database** | PostgreSQL (Supabase dev, Neon alternative) | ✅ Approved |
-| **ORM** | Drizzle + pg driver | ✅ Approved |
-| **Authentication** | Better Auth (phone plugin + email/password) | ✅ Approved |
-| **Email** | Resend | ✅ Approved |
-| **SMS Provider** | TBD (Tunisia +216 support) | ⏳ Pending Validation |
-| **UI Components** | shadcn/ui | ✅ Approved (Phase 1E) |
+## Local development
 
-**APPROVED ARCHITECTURE:**
-- Better Auth Phone Number plugin for customer phone-based sign-up and login
-- Better Auth email/password for merchant authentication
-- Single Better Auth instance with immutable `user.userType` field
-- Account type separation via NestJS guards (CustomerGuard, MerchantGuard)
-- PostgreSQL row-level security (RLS) for multi-tenant data isolation
-- Drizzle ORM with portability between Supabase (development) and Neon (production alternative)
+Prerequisites: Node.js 22 (as in the Dockerfiles) and Docker. Create a root `.env` with the variables named in `.env.example` (never commit it). Real secret values are your own.
 
-See `docs/DECISIONS.md` for detailed rationale and evaluation.
+```powershell
+# PostgreSQL and the backend (PowerShell; COMPOSE_BAKE avoids a .env BOM parsing issue)
+$env:COMPOSE_BAKE = "false"
+docker compose up -d --build backend
 
-## Quick Links
+# Apply migrations (forward-only)
+npm run db:migrate --prefix backend
 
-- **Product Spec & Scope:** `docs/PRODUCT.md`
-- **Architecture & Tech Choices:** `docs/ARCHITECTURE.md`
-- **Database Schema & Migration Strategy:** `docs/DATABASE.md`
-- **Project Structure & Organization:** `docs/PROJECT_STRUCTURE.md`
-- **Canonical Roadmap:** `docs/ROADMAP.md`
-- **Historical Plan:** `docs/IMPLEMENTATION_PLAN.md`
-- **Architectural Decisions:** `docs/DECISIONS.md`
-- **Technology Reuse Audit:** `docs/RESOURCE_AUDIT.md`
-- **Development Guidelines:** `AGENTS.md`
+# Frontend dev server (http://localhost:5173, proxies /api to the backend)
+npm run dev --prefix frontend
+```
 
-## Phase 1A Prerequisites
+Details and caveats (the local database role bypasses RLS) are in `docs/DATABASE.md`.
 
-1. **Environment Variables** — Create `.env` with:
-   - `BETTER_AUTH_SECRET` (generated)
-   - `DATABASE_URL` (Supabase development project)
-   - `RESEND_API_KEY` (for email)
-   - SMS provider credentials (pending vendor confirmation)
+**Docker gotcha:** the frontend container keeps `node_modules` in a named volume, so a rebuild or restart does not install a newly added dependency (Vite then reports `Failed to resolve import`). Run `docker exec fideliy-frontend npm install` and restart the container (`docker restart fideliy-frontend`).
 
-2. **Accounts & Services:**
-   - Supabase project (PostgreSQL database)
-   - Resend account (transactional email)
-   - SMS provider account for Tunisia (pending)
+### Tests and checks
 
-3. **Local Development:**
-   - Node.js 18+
-   - PostgreSQL client tools (for local testing)
+```bash
+npm test --prefix backend            # Jest; database integration specs are opt-in via RUN_*_INTEGRATION=true
+npm run lint --prefix backend        # tsc --noEmit
+npm test --prefix frontend           # Vitest
+npm run type-check --prefix frontend # tsc --noEmit
+```
 
-## Architecture Overview
+Integration specs need a running, migrated PostgreSQL. The flags are listed in `docs/ROADMAP.md` (testing evidence) and each spec under `backend/test/`.
 
-**Single Better Auth Instance** with multiple authentication methods:
-- **Customers:** Phone Number plugin (OTP via SMS)
-- **Merchants:** Email/password provider
-- Account type determined by immutable `user.userType` field ("customer" | "merchant")
-- Role-based access enforcement via NestJS guards
+## Documentation
 
-**Backend Structure (NestJS Modular Monolith):**
-- `backend/src/features/auth` — Better Auth integration, phone OTP, email/password setup
-- `backend/src/features/customers` — Customer accounts, profiles, memberships
-- `backend/src/features/merchants` — Merchant accounts, business management
-- `backend/src/features/programs` — Loyalty program configuration (stamps, points)
-- `backend/src/features/loyalty` — Earning, redemption, transaction logic
-- `backend/src/features/admin` — Platform administration
-- `backend/src/shared` — Utilities, database layer, guards, middleware, shared infrastructure
-- `backend/src/database` — Drizzle ORM schema, migrations, and generated configuration retained for the current codebase
+- Product scope: `docs/PRODUCT.md`
+- Architecture and API contracts: `docs/ARCHITECTURE.md`
+- Database, RLS and migrations: `docs/DATABASE.md`
+- Decisions: `docs/DECISIONS.md`
+- Roadmap: `docs/ROADMAP.md`
+- Current status: `docs/IMPLEMENTATION_STATUS.md`
+- Design system and UI conventions: `docs/DESIGN_SYSTEM.md`
+- Claude Code instructions: `CLAUDE.md`
 
-**Frontend Structure (React + Vite):**
-- `features/` — Feature-based organization (auth, customer-dashboard, merchant-dashboard)
-- `shared/` — Shared UI components, hooks, utilities
-- `pages/` — Route pages (landing, sign-in, dashboards)
+## Release 1 scope
 
-**Database:**
-- PostgreSQL with Drizzle ORM
-- Development: Supabase
-- Production alternative: Neon (via Drizzle portability)
-- Multi-tenancy: Row-level security (RLS) at database level
+**In scope:** customer registration and sign-in by phone number (self-registration and merchant-assisted), merchant email and password authentication, stamp, points and combined programmes, QR scanning (with manual entry fallback), customer and merchant dashboards, basic admin, email notifications, redemption and corrections, multi-tenancy with RLS.
 
-## Release 1 Scope
+**Deferred:** multi-manager support, delegated permissions, NFC, advanced analytics, public API, mobile apps, billing and subscription enforcement, phone OTP verification.
 
-### In Scope
-- Customer authentication (phone OTP)
-- Merchant authentication (email + password)
-- Stamp cards and points programs
-- QR code scanning (with manual entry fallback)
-- Customer dashboard (balance, history, rewards)
-- Merchant dashboard (program management, customer view)
-- Admin interface (basic management)
-- Email notifications
-
-### Out of Scope (Deferred to Phase 2+)
-- Multi-manager support
-- Delegated access and permissions
-- NFC scanning
-- Advanced analytics
-- Public API
-- Mobile apps
-
-See `docs/PRODUCT.md` for full feature details.
-
-## Development Guidelines
-
-All developers and agents implementing features must follow the mandatory rules in `AGENTS.md`.
-
-Key principles:
-- **Reuse-first:** Check existing code before writing new.
-- **Respect boundaries:** Release 1 scope and approved architecture only.
-- **Inspect before modifying:** Read affected code and trace dependents.
-- **Better Auth:** Use Phone Number plugin for customers, email/password for merchants.
-- **Guards:** Enforce account type via NestJS guards, not frontend logic.
-- **RLS:** All queries respect multi-tenant isolation via Postgres RLS.
-- **Report evidence:** Document decisions and changes clearly.
-
-## Phase 1A Readiness
-
-✅ All architectural decisions approved and documented
-✅ Better Auth Phone Number plugin validated (official, production-ready)
-✅ NestJS + Drizzle + Postgres stack confirmed compatible
-✅ Account separation architecture finalized (single instance, guards, immutable userType)
-✅ SMS provider research pending (vendor confirmation for Tunisia +216)
-⏳ Ready for Phase 1A environment setup upon explicit user approval
+See `docs/PRODUCT.md` for details.

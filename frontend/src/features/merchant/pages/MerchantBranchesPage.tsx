@@ -153,7 +153,7 @@ export default function MerchantBranchesPage() {
 
   if (isLoading) {
     return (
-      <main className="flex-1 bg-[var(--background)] p-4 md:p-8">
+      <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
         <div className="mx-auto max-w-7xl w-full space-y-6">
           <div className="h-8 w-64 bg-[var(--subtle)] rounded animate-pulse" />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -162,12 +162,12 @@ export default function MerchantBranchesPage() {
             ))}
           </div>
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="flex-1 bg-[var(--background)] p-4 md:p-8">
+    <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
       <div className="mx-auto max-w-7xl w-full">
         {/* Header */}
         <header className="mb-8">
@@ -390,7 +390,7 @@ export default function MerchantBranchesPage() {
           </div>
         </Section>
       </div>
-    </main>
+    </div>
   );
 }
 

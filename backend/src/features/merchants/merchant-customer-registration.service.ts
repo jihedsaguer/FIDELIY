@@ -4,11 +4,11 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import * as crypto from 'crypto';
+import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 
 import { TenantContextService } from '../../shared/database/tenant-context.service';
-import { hashCustomerQrCredential } from '../../shared/security/customer-qr';
+import { deriveCustomerQrCodes } from '../../shared/security/customer-qr';
 import { PhoneAuthService } from '../auth/phone-auth.service';
 import { BusinessAccessService } from './business-access.service';
 import { RegisterCustomerDto, RegisterCustomerResponse } from './dto/register-customer.dto';
@@ -141,7 +141,7 @@ export class MerchantCustomerRegistrationService {
         }
 
         // Issue personal QR credential - returns raw value once, stores hash only
-        const personalQrCredential = await this.issuePersonalQrCredential(
+        const personalQr = await this.issuePersonalQrCredential(
           connection,
           customerAccountId,
           existingCustomer !== undefined, // true if customer already existed
@@ -164,7 +164,8 @@ export class MerchantCustomerRegistrationService {
             status: 'active' as const,
             joinedAt: new Date().toISOString(),
           },
-          personalQrCredential,
+          personalQrCredential: personalQr?.credential,
+          personalQrShortCode: personalQr?.shortCode,
         };
       },
     );
@@ -335,7 +336,7 @@ export class MerchantCustomerRegistrationService {
     connection: PoolClient,
     customerAccountId: string,
     isExistingCustomer: boolean,
-  ): Promise<string | undefined> {
+  ): Promise<{ credential: string; shortCode: string } | undefined> {
     // Check for existing active QR credential
     const existingResult = await connection.query<{ credentialHash: string }>(
       `SELECT credential_hash 
@@ -355,17 +356,18 @@ export class MerchantCustomerRegistrationService {
     // Customer has no QR credential - generate a new one
     // Return the raw value ONCE for the merchant to display to the new customer
     // Only store the hash in the database
-    const credential = crypto.randomBytes(32).toString('base64url');
-    const credentialHash = hashCustomerQrCredential(credential);
+    // (derived from the server key and the new row id; DECISIONS.md #20)
+    const credentialId = randomUUID();
+    const codes = deriveCustomerQrCodes(customerAccountId, credentialId);
 
     await connection.query(
       `INSERT INTO customer_qr_credentials 
-         (customer_account_id, credential_hash, issued_at)
-       VALUES ($1, $2, now())`,
-      [customerAccountId, credentialHash],
+         (id, customer_account_id, credential_hash, short_code_hash, issued_at)
+       VALUES ($1, $2, $3, $4, now())`,
+      [credentialId, customerAccountId, codes.credentialHash, codes.shortCodeHash],
     );
 
-    return credential;
+    return { credential: codes.credential, shortCode: codes.shortCode };
   }
 
   /**

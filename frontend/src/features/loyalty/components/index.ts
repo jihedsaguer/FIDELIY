@@ -8,3 +8,7 @@
 export { StampProgress, type StampProgressProps } from './StampProgress';
 export { PointsProgress, type PointsProgressProps } from './PointsProgress';
 export { ProgramTypeLabel, getProgramTypeLabel, type ProgramTypeLabelProps, type TranslateFunction } from './ProgramTypeLabel';
+export { StampSlots, MAX_STAMP_SLOTS, type StampSlotsProps } from './StampSlots';
+export { RewardProgressBar, type RewardProgressBarProps } from './RewardProgressBar';
+export { getRewardProgress, type RewardProgress } from './rewardProgress';
+export { LoyaltyCardView, type LoyaltyCardViewProps } from './LoyaltyCardView';

@@ -206,18 +206,18 @@ export default function MerchantBusinessProfilePage() {
   
   if (isLoading) {
     return (
-      <main className="flex-1 bg-[var(--background)] p-4 md:p-8">
+      <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
         <div className="mx-auto max-w-screen-md w-full space-y-6">
           <div className="h-10 w-64 bg-[var(--subtle)] rounded-lg animate-pulse" />
           <div className="h-64 w-full bg-[var(--subtle)] rounded-lg animate-pulse" />
         </div>
-      </main>
+      </div>
     );
   }
 
   if (hasError) {
     return (
-      <main className="flex-1 bg-[var(--background)] p-4 md:p-8">
+      <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
         <div className="mx-auto max-w-screen-md w-full">
           <Card className="p-6 text-center">
             <h2 className="text-[var(--danger)] text-lg font-semibold mb-2">{t('error')}</h2>
@@ -227,13 +227,13 @@ export default function MerchantBusinessProfilePage() {
             </Button>
           </Card>
         </div>
-      </main>
+      </div>
     );
   }
 
   if (!business) {
     return (
-      <main className="flex-1 bg-[var(--background)] p-4 md:p-8">
+      <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
         <div className="mx-auto max-w-screen-md w-full">
           <Card className="p-6 text-center">
             <h2 className="text-[var(--text)] text-lg font-semibold mb-2">{t('noBusiness')}</h2>
@@ -243,12 +243,12 @@ export default function MerchantBusinessProfilePage() {
             </Button>
           </Card>
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="flex-1 bg-[var(--background)] p-4 md:p-8">
+    <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
       <div className="mx-auto max-w-screen-md w-full">
         <header className="mb-8 flex items-center justify-between">
           <div>
@@ -475,6 +475,6 @@ export default function MerchantBusinessProfilePage() {
           </Button>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

@@ -9,6 +9,10 @@ import {
   jest,
 } from '@jest/globals';
 
+// Fixed test-only key (32 bytes, hex) for deterministic customer QR derivation.
+process.env.CUSTOMER_QR_SECRET =
+  '0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0';
+
 (globalThis as any).jest = jest;
 (globalThis as any).describe = describe;
 (globalThis as any).it = it;

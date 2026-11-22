@@ -42,6 +42,7 @@ integrationDescribe('Loyalty ledger foundation integration (PostgreSQL)', () => 
       imports: [AppModule],
     }).compile();
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api'); // as in main.ts; Better Auth basePath is /api/auth
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -60,14 +61,14 @@ integrationDescribe('Loyalty ledger foundation integration (PostgreSQL)', () => 
 
     const http = request(app.getHttpServer());
     const bizRes = await http
-      .post('/merchants/business-setup/business')
+      .post('/api/merchants/business-setup/business')
       .set('Cookie', merchant.cookie)
       .send({ name: 'Ledger Integration Business' })
       .expect(201);
     businessId = bizRes.body.business.id;
 
     const branchRes = await http
-      .post('/merchants/business-setup/first-branch')
+      .post('/api/merchants/business-setup/first-branch')
       .set('Cookie', merchant.cookie)
       .send({
         name: 'Ledger Integration Branch',
@@ -77,7 +78,7 @@ integrationDescribe('Loyalty ledger foundation integration (PostgreSQL)', () => 
     branchId = branchRes.body.branches[0].id;
 
     const otherBizRes = await http
-      .post('/merchants/business-setup/business')
+      .post('/api/merchants/business-setup/business')
       .set('Cookie', otherMerchant.cookie)
       .send({ name: 'Other Ledger Business' })
       .expect(201);
@@ -85,7 +86,7 @@ integrationDescribe('Loyalty ledger foundation integration (PostgreSQL)', () => 
 
     // 2. Setup Program with stamps & points configurations
     const progRes = await http
-      .post('/programs')
+      .post('/api/programs')
       .set('Cookie', merchant.cookie)
       .send({ type: 'both', configurations: { stamps: {}, points: {} } })
       .expect(201);
@@ -100,7 +101,7 @@ integrationDescribe('Loyalty ledger foundation integration (PostgreSQL)', () => 
     // 3. Setup Customer and join business
     customer = await registerCustomer(app, auth, database);
     const joinRes = await http
-      .post('/customers/memberships')
+      .post('/api/customers/memberships')
       .set('Cookie', customer.cookie)
       .send({ businessQrId: bizRes.body.business.publicQrId })
       .expect(201);
@@ -146,6 +147,7 @@ integrationDescribe('Loyalty ledger foundation integration (PostgreSQL)', () => 
       branchId,
       category: 'purchase',
       idempotencyKey,
+      purchaseAmountMillimes: 20000,
       entries: [
         {
           activityType: 'stamps',
@@ -156,9 +158,11 @@ integrationDescribe('Loyalty ledger foundation integration (PostgreSQL)', () => 
           activityType: 'points',
           delta: 50,
           programConfigurationId: pointConfigId,
+          earningRateHundredths: 250,
         },
       ],
     });
+    expect(result.entries[1].earningRateHundredths).toBe(250);
 
     expect(result.id).toBeDefined();
     expect(result.entries).toHaveLength(2);
@@ -184,6 +188,15 @@ integrationDescribe('Loyalty ledger foundation integration (PostgreSQL)', () => 
         [result.entries[0].id],
       ),
     ).rejects.toThrow(/append-only/i);
+  });
+
+  it('rejects UPDATE of a programme configuration (migration 0014)', async () => {
+    await expect(
+      database.getPool().query(
+        `UPDATE program_configurations SET settings = '{}'::jsonb WHERE id = $1`,
+        [stampConfigId],
+      ),
+    ).rejects.toThrow(/immutable/i);
   });
 
   it('enforces business-scoped idempotency: same key + same payload returns original outcome', async () => {
@@ -254,7 +267,7 @@ integrationDescribe('Loyalty ledger foundation integration (PostgreSQL)', () => 
     // Setup program and membership for otherBusiness
     const http = request(app.getHttpServer());
     const otherProg = await http
-      .post('/programs')
+      .post('/api/programs')
       .set('Cookie', otherMerchant.cookie)
       .send({ type: 'stamps', configurations: { stamps: {} } })
       .expect(201);
@@ -270,7 +283,7 @@ integrationDescribe('Loyalty ledger foundation integration (PostgreSQL)', () => 
     );
 
     const otherJoin = await http
-      .post('/customers/memberships')
+      .post('/api/customers/memberships')
       .set('Cookie', customer.cookie)
       .send({ businessQrId: otherBiz.rows[0].public_qr_id })
       .expect(201);
@@ -330,6 +343,7 @@ integrationDescribe('Loyalty ledger foundation integration (PostgreSQL)', () => 
       category: 'reversal',
       idempotencyKey: `rev-tx-${randomUUID()}`,
       reversesTransactionId: originalTx.id,
+      reversalReason: 'Integration test correction',
       entries: [
         {
           activityType: 'stamps',
@@ -358,6 +372,7 @@ integrationDescribe('Loyalty ledger foundation integration (PostgreSQL)', () => 
         category: 'reversal',
         idempotencyKey: `rev-tx-dup-${randomUUID()}`,
         reversesTransactionId: originalTx.id,
+        reversalReason: 'Integration test correction',
         entries: [
           {
             activityType: 'stamps',
@@ -389,6 +404,7 @@ integrationDescribe('Loyalty ledger foundation integration (PostgreSQL)', () => 
         category: 'reversal',
         idempotencyKey: `rev-tx-wrong-delta-${randomUUID()}`,
         reversesTransactionId: anotherTx.id,
+        reversalReason: 'Integration test correction',
         entries: [
           {
             activityType: 'stamps',
@@ -429,11 +445,11 @@ async function registerCustomer(
   const phoneNumber = `+216${suffix}`;
   const identifier = `phone-number-otp-${phoneNumber}`;
   const http = request(app.getHttpServer());
-  await http.post('/auth/phone-number/send-otp').send({ phoneNumber }).expect(200);
+  await http.post('/api/auth/phone-number/send-otp').send({ phoneNumber }).expect(200);
   const code = (await auth.getBetterAuth().$context).test.getOTP(identifier);
   if (!code) throw new Error('Customer OTP was not created for integration test.');
   const verification = await http
-    .post('/auth/phone-number/verify')
+    .post('/api/auth/phone-number/verify')
     .send({ phoneNumber, code })
     .expect(200);
   const cookie = verification.headers['set-cookie'];
@@ -452,7 +468,7 @@ async function registerMerchant(
 ): Promise<TestMerchant> {
   const email = `ledger-merchant-${randomUUID()}@example.test`;
   const result = await request(app.getHttpServer())
-    .post('/auth/sign-up/email')
+    .post('/api/auth/sign-up/email')
     .send({
       email,
       password: `Test-${randomUUID()}-Password!`,

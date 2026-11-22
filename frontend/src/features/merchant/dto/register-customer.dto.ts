@@ -11,4 +11,5 @@ export interface RegisterCustomerResponse {
   isNewCustomer: boolean;
   membershipId?: string;
   personalQrCredential?: string;
+  personalQrShortCode?: string;
 }

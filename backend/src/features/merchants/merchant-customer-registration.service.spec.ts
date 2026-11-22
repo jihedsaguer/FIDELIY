@@ -5,6 +5,12 @@ import { PhoneAuthService } from '../auth/phone-auth.service';
 import { BusinessAccessService } from './business-access.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import type { PoolClient } from 'pg';
+import {
+  deriveCustomerQrCredential,
+  deriveCustomerQrShortCode,
+  hashCustomerQrCredential,
+  hashCustomerQrShortCode,
+} from '../../shared/security/customer-qr';
 
 describe('MerchantCustomerRegistrationService', () => {
   let service: MerchantCustomerRegistrationService;
@@ -173,9 +179,10 @@ describe('MerchantCustomerRegistrationService', () => {
     });
 
     it('should generate and return new QR credential for new customer', async () => {
+      const queryMock = jest.fn();
       mockTenantContext.executeWithContext.mockImplementation(async (_userId, callback) => {
         const mockConn = {
-          query: jest.fn()
+          query: queryMock
             .mockResolvedValueOnce({ rows: [] }) // findCustomerByPhone - no customer
             .mockResolvedValueOnce({ rows: [{ id: 'new-user-id' }] }) // createUser
             .mockResolvedValueOnce({ rows: [{ id: 'new-customer-account-id' }] }) // createCustomerAccount
@@ -198,6 +205,21 @@ describe('MerchantCustomerRegistrationService', () => {
       expect(result.personalQrCredential).toBeDefined();
       expect(typeof result.personalQrCredential).toBe('string');
       expect(result.personalQrCredential?.length).toBeGreaterThan(0);
+
+      // Derived (not random) credential and short ID; only hashes are stored.
+      const insert = queryMock.mock.calls.find(([sql]) =>
+        (sql as string).includes('INSERT INTO customer_qr_credentials'),
+      ) as [string, string[]];
+      const [rowId, accountId, credentialHash, shortCodeHash] = insert[1];
+      expect(accountId).toBe('new-customer-account-id');
+      expect(result.personalQrCredential).toBe(
+        deriveCustomerQrCredential(accountId, rowId),
+      );
+      expect(result.personalQrShortCode).toBe(
+        deriveCustomerQrShortCode(accountId, rowId),
+      );
+      expect(credentialHash).toBe(hashCustomerQrCredential(result.personalQrCredential as string));
+      expect(shortCodeHash).toBe(hashCustomerQrShortCode(result.personalQrShortCode as string));
     });
 
     it('should return undefined for existing customer with hash-only credential', async () => {
@@ -219,6 +241,7 @@ describe('MerchantCustomerRegistrationService', () => {
 
       // Should return undefined for existing customer (hash-only, cannot retrieve raw)
       expect(result.personalQrCredential).toBeUndefined();
+      expect(result.personalQrShortCode).toBeUndefined();
     });
 
     it('should not regenerate QR credential for existing customer on repeated registration', async () => {

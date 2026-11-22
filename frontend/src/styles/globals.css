@@ -87,21 +87,24 @@ textarea {
   font: inherit;
 }
 
-/* Remove default button styles */
-button {
-  border: 0;
-  background: transparent;
-}
+/* Element defaults live in @layer base so Tailwind utilities (e.g. bg-*, border, text-*) can override them */
+@layer base {
+  /* Remove default button styles */
+  button {
+    border: 0;
+    background: transparent;
+  }
 
-/* Links */
-a {
-  color: var(--brand);
-  text-decoration: none;
-  transition: color var(--transition-normal);
-}
+  /* Links */
+  a {
+    color: var(--brand);
+    text-decoration: none;
+    transition: color var(--transition-normal);
+  }
 
-a:hover {
-  color: var(--brand-dark);
+  a:hover {
+    color: var(--brand-dark);
+  }
 }
 
 /* ========================================
@@ -1453,6 +1456,13 @@ footer {
   .no-print {
     display: none !important;
   }
+}
+
+/* Loyalty card stamp-in (used via motion-safe:animate-[stamp-in_...]) */
+@keyframes stamp-in {
+  0% { transform: scale(2.2) rotate(-14deg); opacity: 0; }
+  60% { transform: scale(0.9) rotate(3deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
 }
 
 /* Reduced motion */

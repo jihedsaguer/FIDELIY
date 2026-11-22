@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-FIDELIY uses PostgreSQL with row-level security (RLS) to enforce multi-tenant data isolation. Drizzle ORM provides type-safe database abstraction with full TypeScript support. The schema is portable between Supabase (development) and Neon (production alternative).
+FIDELIY uses PostgreSQL with row-level security (RLS) to enforce multi-tenant data isolation. Drizzle ORM provides type-safe database abstraction with full TypeScript support. Local development uses Docker PostgreSQL 16; Neon is the planned deployment database (DECISIONS #18). Only standard PostgreSQL features are used.
 
 ## 2. Core Entities & Relationships
 
@@ -35,10 +35,10 @@ userSession (Better Auth managed)
 customer_accounts (Customer-specific capability and data)
 ├─ id: UUID (PK)
 ├─ user_id: UUID (FK → users.id, UNIQUE)
-├─ phoneVerified: boolean (OTP verification status)
+├─ phoneVerified: boolean (false for phone-registered customers in Release 1; OTP verification deferred to Release 2, see DECISIONS #16)
 ├─ joinedAt: timestamp
 └─ Constraint: One customer account per user
-└─ RLS Policy: User can only select their own record
+└─ RLS Policy: User can only select their own record; since migration 0016 (not yet applied to the dev DB) a merchant can also select the rows of customers holding a membership in a business they own
 ```
 
 ### Domain: Merchant Capability & Businesses
@@ -141,13 +141,15 @@ membership_lifecycle_events (Append-only membership join/leave audit trail)
 customer_qr_credentials (Personal customer QR credential lifecycle)
 ├─ id: UUID (PK)
 ├─ customer_account_id: UUID (FK → customer_accounts.id)
-├─ credential_hash: varchar(64) (UNIQUE, SHA-256 hex digest)
+├─ credential_hash: varchar(64) (UNIQUE, SHA-256 hex digest of the HMAC-derived credential)
+├─ short_code_hash: varchar(64) (nullable, SHA-256 of the normalised short ID; NULL for legacy rows; migration 0015)
+├─ UNIQUE(short_code_hash) WHERE revoked_at IS NULL AND short_code_hash IS NOT NULL
 ├─ issued_at: timestamp
 ├─ revoked_at: timestamp (nullable)
 └─ UNIQUE(customer_account_id) WHERE revoked_at IS NULL
 ```
 
-Migration `0006_customer_business_memberships` introduced business-scoped memberships, public business QR identifiers, and personal QR credential storage. Migration `0007_secure_customer_qr_loyalty_ledger` migrated plaintext credentials to 64-character SHA-256 hashes (`credential_hash`), ensuring raw secrets are returned only once upon issuance or rotation and never stored or returned in ordinary read APIs. Credential resolution compares the presented credential's SHA-256 hash against active records in the database.
+Migration `0006_customer_business_memberships` introduced business-scoped memberships, public business QR identifiers, and personal QR credential storage. Migration `0007_secure_customer_qr_loyalty_ledger` migrated plaintext credentials to 64-character SHA-256 hashes (`credential_hash`), ensuring raw secrets are returned only once upon issuance or rotation and never stored or returned in ordinary read APIs. Credential resolution compares the presented credential's SHA-256 hash against active records in the database. Since DECISIONS #20 the credential and the short ID are derived from `CUSTOMER_QR_SECRET`, the account id and the row id (never stored); migration `0015_customer_qr_short_code` adds `short_code_hash` and its partial unique index. Rows issued before it keep a random credential and a NULL short ID until the customer rotates (GET reports `requiresRotation`).
 
 ### Domain: Internal Loyalty Ledger (Checkpoint 6B-B)
 ```
@@ -270,92 +272,25 @@ CREATE INDEX idx_audit_log_created_at ON audit_log(created_at DESC);
 
 ## 4. Row-Level Security (RLS) Policies
 
-### RLS Context (Set Per Request)
+RLS is enabled on the tenant tables (migrations `0001_rls.sql`, `0005`-`0007`). PostgreSQL here has no `auth.uid()`; isolation relies on a transaction-local setting.
+
+### RLS context (set per operation)
+
+`TenantContextService.executeWithContext(userId, fn, options?)` (`backend/src/shared/database/tenant-context.service.ts`) acquires a connection, opens a transaction (`read committed` by default; `serializable` and `repeatable read` supported, with bounded retry on `40001` and `40P01`) and runs `set_config('app.user_id', userId, true)`, so the value is cleared on COMMIT or ROLLBACK. Protected queries must run through it.
+
+### Policy pattern
+
 ```sql
--- In NestJS guard or middleware
-SET rls.current_user_id = '{userId}'::uuid;
-SET rls.current_user_type = '{userType}';  -- 'customer' or 'merchant'
+-- account tables: a user sees only their own row
+USING (user_id = current_setting('app.user_id')::uuid)
+
+-- business-owned tables (businesses, branches, programs, program_configurations):
+-- ownership is resolved through merchant_accounts for the same app.user_id
 ```
 
-### Customer RLS Policies
-```sql
--- Customers can view only their own data
-CREATE POLICY customer_isolation_customers
-ON customers
-FOR SELECT
-TO authenticated
-USING (user_id = auth.uid());
+**Merchant read of customer accounts (migration `0016_merchant_reads_member_customer_accounts`, forward-only, not applied to the dev database).** Adds the SELECT policy `customer_accounts_select_business_owner` on `customer_accounts`: `USING (public.merchant_owns_customer_account(id))`. The `SECURITY DEFINER` function (`STABLE`, `search_path = pg_catalog, public`) returns whether a membership of that customer exists in a business whose `merchant_accounts.user_id` equals `app.user_id`. A function is required because an inline sub-select on `customer_business_memberships` would re-enter `customer_business_memberships_select_own`, which reads `customer_accounts`, giving "infinite recursion detected in policy". Nothing else changes: `customer_accounts_select_own`, insert and update policies are untouched, no merchant write access is added, and `users` has no RLS (see `0001_rls.sql`), so it needs no policy. Without it, the merchant customer list joins to `customer_accounts` and returns no rows under enforced RLS. Not verifiable locally (the role has `BYPASSRLS`).
 
-CREATE POLICY customer_isolation_enrollments
-ON enrollments
-FOR SELECT
-TO authenticated
-USING (customer_id IN (SELECT id FROM customers WHERE user_id = auth.uid()));
-
-CREATE POLICY customer_isolation_balances
-ON balances
-FOR SELECT
-TO authenticated
-USING (enrollment_id IN (
-  SELECT id FROM enrollments
-  WHERE customer_id IN (SELECT id FROM customers WHERE user_id = auth.uid())
-));
-
-CREATE POLICY customer_isolation_transactions
-ON transactions
-FOR SELECT
-TO authenticated
-USING (enrollment_id IN (
-  SELECT id FROM enrollments
-  WHERE customer_id IN (SELECT id FROM customers WHERE user_id = auth.uid())
-));
-```
-
-### Merchant RLS Policies
-```sql
--- Merchants can view/modify only their own businesses
-CREATE POLICY merchant_isolation_merchants
-ON merchants
-FOR SELECT
-TO authenticated
-USING (user_id = auth.uid());
-
-CREATE POLICY merchant_isolation_businesses
-ON businesses
-FOR SELECT
-TO authenticated
-USING (merchant_id IN (SELECT id FROM merchants WHERE user_id = auth.uid()));
-
-CREATE POLICY merchant_isolation_branches
-ON branches
-FOR SELECT
-TO authenticated
-USING (business_id IN (
-  SELECT id FROM businesses
-  WHERE merchant_id IN (SELECT id FROM merchants WHERE user_id = auth.uid())
-));
-
-CREATE POLICY merchant_isolation_programs
-ON programs
-FOR SELECT
-TO authenticated
-USING (business_id IN (
-  SELECT id FROM businesses
-  WHERE merchant_id IN (SELECT id FROM merchants WHERE user_id = auth.uid())
-));
-
-CREATE POLICY merchant_isolation_transactions
-ON transactions
-FOR SELECT
-TO authenticated
-USING (branch_id IN (
-  SELECT id FROM branches
-  WHERE business_id IN (
-    SELECT id FROM businesses
-    WHERE merchant_id IN (SELECT id FROM merchants WHERE user_id = auth.uid())
-  )
-));
-```
+Policies are defined per command (select/insert/update); not every table has all three. Later tables (memberships, QR credentials, ledger) follow migrations 0006-0008. The migrations are authoritative: read the relevant migration before changing a policy.
 
 ### Local Docker Development
 
@@ -461,56 +396,39 @@ npx drizzle-kit generate
 npm run db:migrate
 ```
 
-### Production (Neon or Supabase)
-```bash
-# Generate migration
-npx drizzle-kit generate
-
-# Create migration file
-npx drizzle-kit migrate
-
-# Run migration (explicit control)
-npm run migrate:prod
-```
+### Deployment (Neon, planned)
+Apply the same reviewed forward-only migrations with the existing runner (`npm run db:migrate --prefix backend`) with `DATABASE_URL` pointing at the target database. `db:generate` runs `drizzle-kit generate:pg`. No `migrate:prod` script and no Neon-specific code exist yet.
 
 ## 8. Backup & Disaster Recovery
 
-### Development (Supabase)
-- Daily backups via Supabase (automatic)
-- Manual exports for version control
+### Development (Docker PostgreSQL)
+- Data lives in the Docker volume `postgres_data`; there are no automated backups.
+- Use `pg_dump` for manual exports. `docker compose down -v` destroys the volume.
 
-### Production (Neon Alternative)
-- Daily backups (automated)
-- Point-in-time recovery (PITR) enabled
-- RTO: < 1 hour
-- RPO: < 15 minutes
+### Deployment (Neon, planned)
+- Backups and point-in-time recovery are to be configured when the Neon project is created.
+- Targets from `docs/PRODUCT.md` (RTO < 1 hour, RPO < 15 minutes) are not yet verified.
 
-## 9. Supabase Development vs Neon Production
+## 9. Local PostgreSQL vs Neon
 
-### Supabase (Development Focus)
-- Integrated PostgreSQL + Auth + RLS
-- Free tier: Sufficient for development/testing
-- Web interface for RLS policy management
-- Real-time subscriptions (not used in Release 1)
+### Local (Docker)
+- `postgres:16-alpine` from the root `docker-compose.yml`
+- The local role is a superuser with `BYPASSRLS` (see Local Docker Development)
 
-### Neon (Production Alternative)
-- Serverless PostgreSQL
-- Auto-scaling compute
-- Cost-effective for variable workloads
-- Full PostgreSQL compatibility (RLS works identically)
+### Neon (planned deployment)
+- Serverless PostgreSQL with full PostgreSQL compatibility
+- Use a least-privilege application role that does not bypass RLS
 
-### Portability Strategy
-- **Schema:** Drizzle-managed; no Supabase-specific extensions
-- **Data:** Native Postgres dump/restore compatible
-- **RLS:** PostgreSQL standard; works on both
-- **Migrations:** Drizzle handles driver differences
+### Portability strategy
+- **Schema:** Drizzle-managed; no provider-specific extensions
+- **Data:** native `pg_dump`/`pg_restore`
+- **RLS:** standard PostgreSQL
 
-### Migration Path (Phase 2 consideration)
-1. Create Neon project with identical schema
-2. Test against staging Neon database
-3. Perform full database migration via pg_dump/pg_restore
-4. Update DATABASE_URL to Neon connection string
-5. Verify RLS policies work identically
+### Migration path to Neon
+1. Create the Neon project and apply all migrations
+2. Test against a staging Neon database
+3. Verify RLS with a non-bypass role
+4. Point `DATABASE_URL` at Neon
 
 ## 10. Performance Considerations
 
@@ -528,3 +446,29 @@ npm run migrate:prod
 - Query performance logging (Phase 2 consideration)
 - Slow query alerts (Phase 2 consideration)
 - Database size monitoring (Phase 2)
+
+---
+
+## Schema changes for Checkpoint 6B-C (migrations 0012-0014 applied to the local Docker database 2026-11-21)
+
+Approved by DECISIONS.md #15. Written as forward-only migrations 0012-0014 and registered in `migrations/meta/_journal.json`; they were applied to the local Docker database on 2026-11-21 with `npm run db:migrate --prefix backend` (catalog check: enum value, three columns, three NOT VALID checks and the trigger are present) and to no other database. Mirrored in `backend/src/features/loyalty/schemas/index.ts`.
+
+| Migration | Change |
+| --- | --- |
+| `0012_loyalty_redemption_category` | `ALTER TYPE loyalty_transaction_category ADD VALUE IF NOT EXISTS 'redemption'`. Separate file because a new enum value cannot be used before its transaction commits; the drizzle migrator applies all pending files in one transaction, so no later migration references `'redemption'`. |
+| `0013_loyalty_amount_reason_rate_snapshot` | `loyalty_transactions.purchase_amount_millimes bigint` (CHECK NULL or >= 0); `loyalty_transactions.reversal_reason text` (CHECK: reversal requires length 1-500, other categories require NULL); `loyalty_activity_entries.earning_rate_hundredths integer` (CHECK NULL, or `activity_type = 'points'` and > 0). The three CHECKs are `NOT VALID`: pre-6B-C append-only rows (e.g. reversals without a reason) cannot be backfilled; new rows are checked. |
+| `0014_program_configuration_immutability` | Trigger `program_configurations_immutable` rejects every `UPDATE` of `program_configurations` (DELETE stays allowed for `deleteProgram`). |
+
+Earning-rate snapshot location: on the entry (points purchase entries only); stamp earnings are the fixed rule (category `purchase` + delta 1). "A points earning requires an amount" and "points purchase entries require a rate snapshot" are enforced in `LoyaltyLedgerService` (a row CHECK cannot span header and entries). Rewards: no `rewards` table; thresholds stay in the versioned configuration settings, stored flat per configuration row as `{ earningRule, rewardThresholds, stampExpirationDays | pointsExpirationDays }`.
+
+Append-only triggers, business-scoped idempotency, single-reversal indexes and inverse-delta enforcement (migration 0008) remain unchanged. Non-negative balances (redemption and reversal) are checked inside the serializable ledger transaction.
+
+**Journal discrepancy (pre-existing, not changed):** `_journal.json` has no entries for `0010_phone_unverified_provisioning` and `0011_add_program_name_description`, so the runner never applies them (they must have been applied by other means where they exist), and entry `0009` has a `when` value lower than `0008`. The migrator applies a journal entry only when its `when` exceeds the newest applied one, so on a database whose last applied entry is 0008 the new entries 0012-0014 (higher `when`) will apply, but 0009-0011 are not guaranteed. Reconciling this needs a separate decision.
+
+### Programme-configuration immutability (verified against migrations 0005-0011)
+
+- Enforced: foreign key `loyalty_activity_entries.program_configuration_id` -> `program_configurations(id)` is `ON DELETE RESTRICT`; application code only inserts configuration rows (new programme version = new rows) and deletes them only when no ledger entry references them.
+- Partly enforced: migration 0014 (applied locally 2026-11-21) adds a trigger rejecting `UPDATE` of `program_configurations`, but there is no privilege restriction; RLS defines only `SELECT` and `INSERT` policies and is not effective locally (`BYPASSRLS`). Migration 0014 adds an UPDATE-rejecting trigger as complementary hardening; the earning-rate snapshot stays required.
+- `programs.version` rows can change name, description and status (activation lifecycle); rates live only in `program_configurations`.
+
+`purchasesPerStamp` (stored in stamp configuration settings) is deprecated for new earning; historical programme versions keep their stored value and are never rewritten. A conversion, if needed, is a new programme version.

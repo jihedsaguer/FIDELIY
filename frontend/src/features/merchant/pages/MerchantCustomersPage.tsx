@@ -1,170 +1,332 @@
-import { useI18n } from '../../../shared/i18n/i18n';
-import { Badge } from '../../../components/ui/Badge';
-import { Button } from '../../../components/ui/Button';
-import { Card } from '../../../components/ui/Card';
-import { Input } from '../../../components/ui/Input';
-import { useScanner } from '../../loyalty/context/ScannerContext';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, QrCode } from 'lucide-react';
-import { useState } from 'react';
+import { History, QrCode, Search } from 'lucide-react';
+import { useI18n } from '../../../shared/i18n/i18n';
+import { Badge, Button, Card, FormFeedback, Input, Modal } from '../../../components/ui';
+import { LoadingPanel } from '../../../components/ui/LoadingPanel';
+import { useScanner } from '../../loyalty/context/ScannerContext';
+import { LoyaltyCardView } from '../../loyalty/components';
+import { useListTransactionsQuery } from '../../loyalty/api';
+import { CustomerHistory } from '../../loyalty/scanner/components/CustomerHistory';
+import { useGetBusinessSetupQuery } from '../../business-onboarding/api/businessOnboardingApi';
+import {
+  useListMerchantCustomersQuery,
+  type MerchantCustomerItem,
+  type MerchantCustomerStatus,
+} from '../api/merchantApi';
+import { useGetCurrentProgramQuery } from '../api/programApi';
+
+const PAGE_SIZE = 25;
+const SEARCH_DEBOUNCE_MS = 300;
+
+const selectClasses =
+  'w-full min-h-[44px] bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-lg)] px-3 py-2 text-sm text-[var(--text)]';
+const thClasses =
+  'text-start p-4 text-[var(--text-muted)] text-sm font-medium uppercase tracking-wider';
+
+/** Customer card in the Customers modal; same cached request as the history below (one source of truth). */
+function CustomerCardInModal({ customer }: { customer: MerchantCustomerItem }) {
+  const { t } = useI18n();
+  const summary = useListTransactionsQuery({ membershipId: customer.membershipId }).data?.summary;
+  const business = useGetBusinessSetupQuery().data?.business ?? null;
+  if (!summary) return null;
+  return (
+    <LoyaltyCardView
+      businessName={business?.name || t('business')}
+      logoUrl={business?.logoUrl ?? null}
+      programType={summary.programType}
+      balance={{ stamps: summary.stamps.balance, points: summary.points.balance }}
+      rewards={summary.rewards}
+      joinedAt={customer.joinedAt}
+    />
+  );
+}
 
 export default function MerchantCustomersPage() {
   const { t, formatDate } = useI18n();
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
   const { openScanner } = useScanner();
 
-  // Note: The backend does not currently provide a customer list API.
-  // Customers can only be accessed via QR code scanning.
-  // This is a backend limitation - see backend/src/features/merchants/merchants.controller.ts
-  // Only resolveCustomerQr and resolveCustomerForTransaction endpoints are available.
-  
-  const customers: Array<{
-    id: string;
-    name: string;
-    phone: string;
-    stamps: number;
-    points: number;
-    lastVisit: string;
-  }> = [];
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<MerchantCustomerStatus | ''>('');
+  const [offset, setOffset] = useState(0);
+  const [historyFor, setHistoryFor] = useState<MerchantCustomerItem | null>(null);
 
-  const filteredCustomers = customers.filter(
-    (c) =>
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.phone.includes(searchQuery)
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      const next = searchInput.trim();
+      setSearch((current) => {
+        if (current !== next) setOffset(0);
+        return next;
+      });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(handle);
+  }, [searchInput]);
+
+  const listQuery = useListMerchantCustomersQuery({
+    ...(search ? { search } : {}),
+    ...(status ? { status } : {}),
+    limit: PAGE_SIZE,
+    offset,
+  });
+  const programQuery = useGetCurrentProgramQuery();
+
+  const data = listQuery.data;
+  const items = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const programType = programQuery.data?.type;
+  // Only the balances the programme uses; both when the programme is unknown.
+  const showStamps = programType !== 'points';
+  const showPoints = programType !== 'stamps';
+  const filtersActive = search !== '' || status !== '';
+
+  if (listQuery.isLoading || programQuery.isLoading) {
+    return (
+      <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
+        <div className="mx-auto max-w-7xl w-full">
+          <LoadingPanel>{t('loading')}</LoadingPanel>
+        </div>
+      </div>
+    );
+  }
+
+  const header = (
+    <header className="mb-8">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-[var(--text)] text-2xl md:text-3xl font-bold">{t('customers')}</h1>
+          <p className="text-[var(--text-muted)] mt-1 text-sm md:text-base">{t('allYourCustomers')}</p>
+        </div>
+        <div className="flex gap-4">
+          <Button variant="outline" onClick={openScanner} className="gap-2">
+            <QrCode className="h-4 w-4" />
+            <span>{t('scan')}</span>
+          </Button>
+        </div>
+      </div>
+    </header>
   );
 
-  const handleScanQR = () => {
-    openScanner();
-  };
-
-  return (
-    <main className="flex-1 bg-[var(--background)] p-4 md:p-8">
-      <div className="mx-auto max-w-7xl w-full">
-        <header className="mb-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-[var(--text)] text-2xl md:text-3xl font-bold">
-                {t('customers')}
-              </h1>
-              <p className="text-[var(--text-muted)] mt-1 text-sm md:text-base">
-                {t('allYourCustomers')}
-              </p>
-            </div>
-            <div className="flex gap-4">
-              <Button variant="outline" onClick={handleScanQR} className="gap-2">
-                <QrCode className="h-4 w-4" />
-                <span>{t('scan')}</span>
-              </Button>
-            </div>
+  if (listQuery.isError && !data) {
+    return (
+      <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
+        <div className="mx-auto max-w-7xl w-full">
+          {header}
+          <div className="space-y-4">
+            <FormFeedback error={t('customersLoadError')} />
+            <Button variant="outline" onClick={() => { void listQuery.refetch(); }}>
+              {t('tryAgain')}
+            </Button>
           </div>
-        </header>
+        </div>
+      </div>
+    );
+  }
 
-        {customers.length === 0 ? null : (
-          <Card className="p-6 mb-8">
-            <div className="flex flex-col md:flex-row gap-4 md:items-center">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
-                  <Input
-                    placeholder={t('searchCustomers')}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              <Button variant="outline" className="gap-2">
-                <Filter className="h-4 w-4" />
-                <span>{t('actions')}</span>
-              </Button>
-            </div>
-          </Card>
-        )}
-
-        {filteredCustomers.length === 0 && searchQuery === '' ? (
-          <Card className="text-center py-12 px-4">
+  if (!filtersActive && total === 0) {
+    return (
+      <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
+        <div className="mx-auto max-w-7xl w-full">
+          {header}
+          <Card className="p-8 text-center">
             <QrCode className="mx-auto h-12 w-12 text-[var(--text-muted)] mb-4" />
-            <h3 className="text-[var(--text)] text-lg font-semibold mb-2">
-              {t('noCustomersFound')}
-            </h3>
-            <p className="text-[var(--text-muted)] text-sm max-w-md mx-auto">
-              {t('manageYourCustomers')}
-            </p>
+            <h3 className="text-[var(--text)] text-lg font-semibold mb-2">{t('noCustomersFound')}</h3>
+            <p className="text-[var(--text-muted)] text-sm max-w-md mx-auto">{t('manageYourCustomers')}</p>
             <div className="mt-6">
-              <Button onClick={handleScanQR} className="gap-2">
+              <Button onClick={openScanner} className="gap-2">
                 <QrCode className="h-4 w-4" />
                 <span>{t('scanCustomerQR')}</span>
               </Button>
             </div>
           </Card>
-        ) : filteredCustomers.length === 0 ? (
-          <Card className="text-center py-12 px-4">
+        </div>
+      </div>
+    );
+  }
+
+  const historyLabel = (name: string) => `${t('viewHistory')} : ${name}`;
+  const statusBadge = (value: MerchantCustomerStatus) => (
+    <Badge variant={value === 'active' ? 'success' : 'secondary'} size="sm">
+      {value === 'active' ? t('active') : t('inactiveStatus')}
+    </Badge>
+  );
+  const lastActivity = (value: string | null) =>
+    value ? formatDate(value) : t('customerNoActivity');
+  const rangeStart = items.length === 0 ? 0 : offset + 1;
+  const rangeEnd = offset + items.length;
+
+  return (
+    <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
+      <div className="mx-auto max-w-7xl w-full">
+        {header}
+
+        <Card className="p-4 mb-6">
+          <div className="flex flex-col md:flex-row gap-4 md:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
+              <Input
+                type="search"
+                aria-label={t('customersSearchLabel')}
+                placeholder={t('searchCustomers')}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="ps-10"
+              />
+            </div>
+            <div className="md:w-56">
+              <select
+                aria-label={t('customersStatusFilter')}
+                className={selectClasses}
+                value={status}
+                onChange={(e) => {
+                  setStatus(e.target.value as MerchantCustomerStatus | '');
+                  setOffset(0);
+                }}
+              >
+                <option value="">{t('allStatuses')}</option>
+                <option value="active">{t('active')}</option>
+                <option value="inactive">{t('inactiveStatus')}</option>
+              </select>
+            </div>
+          </div>
+        </Card>
+
+        {listQuery.isError && (
+          <div className="mb-4 space-y-2">
+            <FormFeedback error={t('customersLoadError')} />
+            <Button variant="outline" onClick={() => { void listQuery.refetch(); }}>
+              {t('tryAgain')}
+            </Button>
+          </div>
+        )}
+
+        {items.length === 0 ? (
+          <Card className="p-8 text-center">
             <Search className="mx-auto h-12 w-12 text-[var(--text-muted)] mb-4" />
-            <h3 className="text-[var(--text)] text-lg font-semibold mb-2">
-              {t('noCustomersFound')}
-            </h3>
-            <p className="text-[var(--text-muted)] text-sm">
-              {t('tryDifferentSearch')}
-            </p>
+            <h3 className="text-[var(--text)] text-lg font-semibold mb-2">{t('noCustomersFound')}</h3>
+            <p className="text-[var(--text-muted)] text-sm">{t('tryDifferentSearch')}</p>
           </Card>
         ) : (
-          <div className="bg-[var(--surface)] rounded-md border border-[var(--border)] overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[var(--border)]">
-                  <th className="text-left p-4 text-[var(--text-muted)] text-sm font-medium uppercase tracking-wider">
-                    {t('name')}
-                  </th>
-                  <th className="text-left p-4 text-[var(--text-muted)] text-sm font-medium uppercase tracking-wider">
-                    {t('phoneNumber')}
-                  </th>
-                  <th className="text-left p-4 text-[var(--text-muted)] text-sm font-medium uppercase tracking-wider">
-                    {t('stamps')}
-                  </th>
-                  <th className="text-left p-4 text-[var(--text-muted)] text-sm font-medium uppercase tracking-wider">
-                    {t('points')}
-                  </th>
-                  <th className="text-left p-4 text-[var(--text-muted)] text-sm font-medium uppercase tracking-wider">
-                    {t('lastVisit')}
-                  </th>
-                  <th className="text-right p-4 text-[var(--text-muted)] text-sm font-medium uppercase tracking-wider">
-                    {t('actions')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCustomers.map((customer) => (
-                  <tr
-                    key={customer.id}
-                    className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--subtle)] transition-colors"
-                  >
-                    <td className="p-4 text-[var(--text)]">
-                      <span className="font-medium">{customer.name}</span>
-                    </td>
-                    <td className="p-4 text-[var(--text-muted)]">{customer.phone}</td>
-                    <td className="p-4">
-                      {customer.stamps > 0 && (
-                        <Badge variant={customer.stamps >= 10 ? 'default' : 'secondary'}>
-                          {customer.stamps}
-                        </Badge>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      {customer.points > 0 && (
-                        <Badge variant="primary">{customer.points}</Badge>
-                      )}
-                    </td>
-                    <td className="p-4 text-[var(--text-muted)] text-sm">{formatDate(customer.lastVisit)}</td>
-                    <td className="p-4 text-right">
-                      <Button variant="ghost" size="sm" onClick={handleScanQR}>
-                        <QrCode className="h-3 w-3" />
-                      </Button>
-                    </td>
+          <div aria-busy={listQuery.isFetching}>
+            <div className="hidden md:block bg-[var(--surface)] rounded-[var(--radius-lg)] border border-[var(--border)]">
+              <table className="w-full">
+                <caption className="sr-only">{t('customersTableCaption')}</caption>
+                <thead>
+                  <tr className="border-b border-[var(--border)] bg-[var(--subtle)]">
+                    <th scope="col" className={thClasses}>{t('name')}</th>
+                    <th scope="col" className={thClasses}>{t('phoneNumber')}</th>
+                    <th scope="col" className={thClasses}>{t('status')}</th>
+                    <th scope="col" className={thClasses}>{t('joinedOn')}</th>
+                    {showStamps && <th scope="col" className={thClasses}>{t('stamps')}</th>}
+                    {showPoints && <th scope="col" className={thClasses}>{t('points')}</th>}
+                    <th scope="col" className={thClasses}>{t('lastActivity')}</th>
+                    <th scope="col" className="text-end p-4 text-[var(--text-muted)] text-sm font-medium uppercase tracking-wider">
+                      {t('actions')}
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {items.map((c) => (
+                    <tr
+                      key={c.membershipId}
+                      className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--subtle)] transition-colors"
+                    >
+                      <td className="p-4 text-start text-[var(--text)] font-medium">{c.customer.name}</td>
+                      <td className="p-4 text-start text-[var(--text-muted)]">
+                        <span dir="ltr" className="inline-block">{c.customer.phoneNumber}</span>
+                      </td>
+                      <td className="p-4 text-start">{statusBadge(c.status)}</td>
+                      <td className="p-4 text-start text-[var(--text-muted)] text-sm">{formatDate(c.joinedAt)}</td>
+                      {showStamps && <td className="p-4 text-start text-[var(--text)]">{c.balance.stamps}</td>}
+                      {showPoints && <td className="p-4 text-start text-[var(--text)]">{c.balance.points}</td>}
+                      <td className="p-4 text-start text-[var(--text-muted)] text-sm">{lastActivity(c.lastActivityAt)}</td>
+                      <td className="p-4 text-end">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="min-h-[44px] gap-2"
+                          aria-label={historyLabel(c.customer.name)}
+                          onClick={() => setHistoryFor(c)}
+                        >
+                          <History className="h-4 w-4" aria-hidden="true" />
+                          <span>{t('viewHistory')}</span>
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <ul className="md:hidden space-y-3">
+              {items.map((c) => (
+                <li key={c.membershipId}>
+                  <Card className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium text-[var(--text)] break-words">{c.customer.name}</p>
+                        <p dir="ltr" className="text-sm text-[var(--text-muted)] text-start">{c.customer.phoneNumber}</p>
+                      </div>
+                      {statusBadge(c.status)}
+                    </div>
+                    <dl className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <dt className="text-[var(--text-muted)]">{t('joinedOn')}</dt>
+                        <dd className="text-[var(--text)]">{formatDate(c.joinedAt)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-[var(--text-muted)]">{t('lastActivity')}</dt>
+                        <dd className="text-[var(--text)]">{lastActivity(c.lastActivityAt)}</dd>
+                      </div>
+                      {showStamps && (
+                        <div>
+                          <dt className="text-[var(--text-muted)]">{t('stamps')}</dt>
+                          <dd className="text-[var(--text)]">{c.balance.stamps}</dd>
+                        </div>
+                      )}
+                      {showPoints && (
+                        <div>
+                          <dt className="text-[var(--text-muted)]">{t('points')}</dt>
+                          <dd className="text-[var(--text)]">{c.balance.points}</dd>
+                        </div>
+                      )}
+                    </dl>
+                    <Button
+                      variant="outline"
+                      className="w-full min-h-[44px] gap-2"
+                      aria-label={historyLabel(c.customer.name)}
+                      onClick={() => setHistoryFor(c)}
+                    >
+                      <History className="h-4 w-4" aria-hidden="true" />
+                      <span>{t('viewHistory')}</span>
+                    </Button>
+                  </Card>
+                </li>
+              ))}
+            </ul>
+
+            <nav className="mt-4 flex items-center justify-between gap-3">
+              <Button
+                variant="outline"
+                className="min-h-[44px]"
+                disabled={offset === 0}
+                onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+              >
+                {t('previous')}
+              </Button>
+              <span dir="ltr" className="text-sm text-[var(--text-muted)]">
+                {rangeStart}–{rangeEnd} / {total}
+              </span>
+              <Button
+                variant="outline"
+                className="min-h-[44px]"
+                disabled={offset + PAGE_SIZE >= total}
+                onClick={() => setOffset(offset + PAGE_SIZE)}
+              >
+                {t('next')}
+              </Button>
+            </nav>
           </div>
         )}
 
@@ -177,6 +339,24 @@ export default function MerchantCustomersPage() {
           </button>
         </div>
       </div>
-    </main>
+
+      <Modal
+        isOpen={historyFor !== null}
+        onClose={() => setHistoryFor(null)}
+        title={historyFor?.customer.name}
+        size="lg"
+      >
+        {historyFor && (
+          <div className="space-y-4">
+            <CustomerCardInModal customer={historyFor} />
+            <CustomerHistory
+              membershipId={historyFor.membershipId}
+              onReversed={() => { void listQuery.refetch(); }}
+              showSummary
+            />
+          </div>
+        )}
+      </Modal>
+    </div>
   );
 }

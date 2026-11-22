@@ -4,8 +4,10 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
   UseInterceptors,
   UploadedFile,
@@ -35,6 +37,7 @@ import { BranchService } from './branch.service';
 import { MerchantCustomerService } from './merchant-customer.service';
 import { MerchantTransactionService } from './merchant-transaction.service';
 import { MerchantCustomerRegistrationService } from './merchant-customer-registration.service';
+import { ListCustomersQueryDto, MerchantCustomerListResponse } from './dto/list-customers.dto';
 import { ResolveCustomerQrDto } from './dto/resolve-customer-qr.dto';
 import { RegisterCustomerDto, RegisterCustomerResponse } from './dto/register-customer.dto';
 import {
@@ -42,10 +45,14 @@ import {
   CalculateEarningsDto,
   CreateLoyaltyTransactionDto,
   RedeemRewardDto,
+  ReverseTransactionDto,
+  ListTransactionsQueryDto,
   CustomerForTransactionResponse,
   CalculateEarningsResponse,
   CreateLoyaltyTransactionResponse,
   RedeemRewardResponse,
+  ReverseTransactionResponse,
+  TransactionHistoryResponse,
 } from './dto/merchant-transaction.dto';
 
 /**
@@ -143,6 +150,20 @@ export class MerchantsController {
     return this.businessSetupService.completeSetup(user.id);
   }
 
+  /**
+   * Customers of the merchant's business (name, full phone, status, join date,
+   * ledger balance, last activity). The business comes from the session.
+   * Query: search?, status? (active|inactive), limit? (default 25, max 100), offset?.
+   */
+  @Get('customers')
+  @UseGuards(MerchantGuard)
+  listCustomers(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query() query: ListCustomersQueryDto,
+  ): Promise<MerchantCustomerListResponse> {
+    return this.merchantCustomers.listCustomers(user.id, query);
+  }
+
   @Post('customers/resolve-qr')
   @UseGuards(MerchantGuard)
   resolveCustomerQr(
@@ -181,7 +202,8 @@ export class MerchantsController {
 
   /**
    * Resolve a customer QR for a loyalty transaction.
-   * Returns customer info, balance, programme details, and eligible rewards.
+   * Returns customer info, balance, programme configuration ids and the
+   * rewards stored in the active programme configuration.
    */
   @Post('customers/resolve-for-transaction')
   @UseGuards(MerchantGuard)
@@ -192,13 +214,25 @@ export class MerchantsController {
     return this.merchantTransactions.resolveCustomerForTransaction(
       user.id,
       input.qrCredential,
-      input.branchId,
     );
   }
 
   /**
-   * Calculate loyalty earnings for a purchase amount.
-   * Returns the stamps and points that would be earned.
+   * Merchant transaction history of the authenticated merchant's business
+   * (newest first, at most 100), optionally filtered by membership.
+   */
+  @Get('transactions')
+  @UseGuards(MerchantGuard)
+  listTransactions(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query() query: ListTransactionsQueryDto,
+  ): Promise<TransactionHistoryResponse> {
+    return this.merchantTransactions.listTransactions(user.id, query);
+  }
+
+  /**
+   * Preview the stamps and points a purchase would earn. Writes nothing.
+   * Body: { membershipId, purchaseAmount?: "12.500" }
    */
   @Post('transactions/calculate-earnings')
   @UseGuards(MerchantGuard)
@@ -210,8 +244,10 @@ export class MerchantsController {
   }
 
   /**
-   * Create a loyalty transaction for a customer.
-   * Records stamps and/or points earned from a purchase.
+   * Record a confirmed purchase: one stamp and/or floor(points), calculated
+   * server-side. Body: { membershipId, purchaseAmount?, branchId?,
+   * idempotencyKey, confirmRepeat? }. 409 RECENT_EARNING_CONFIRMATION_REQUIRED
+   * when the customer earned in the last 10 minutes and confirmRepeat is not true.
    */
   @Post('transactions')
   @UseGuards(MerchantGuard)
@@ -223,8 +259,9 @@ export class MerchantsController {
   }
 
   /**
-   * Redeem a reward for a customer.
-   * Deducts the reward cost from the customer's balance.
+   * Redeem a reward stored in the active programme configuration.
+   * Body: { membershipId, configurationId, rewardIndex, branchId?, idempotencyKey }.
+   * The cost is deducted in one currency; any surplus is preserved.
    */
   @Post('transactions/redeem-reward')
   @UseGuards(MerchantGuard)
@@ -233,6 +270,20 @@ export class MerchantsController {
     @Body() input: RedeemRewardDto,
   ): Promise<RedeemRewardResponse> {
     return this.merchantTransactions.redeemReward(user.id, input);
+  }
+
+  /**
+   * Reverse a transaction of the merchant's business in full (owner only,
+   * once, final). Body: { reason (1-500), idempotencyKey }.
+   */
+  @Post('transactions/:transactionId/reverse')
+  @UseGuards(MerchantGuard)
+  reverseTransaction(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('transactionId', new ParseUUIDPipe()) transactionId: string,
+    @Body() input: ReverseTransactionDto,
+  ): Promise<ReverseTransactionResponse> {
+    return this.merchantTransactions.reverseTransaction(user.id, transactionId, input);
   }
 
   /**

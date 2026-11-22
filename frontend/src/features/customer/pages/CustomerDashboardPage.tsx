@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { QrCode } from 'lucide-react';
 import { Section } from '../../../components/ui/Section';
 import { Button } from '../../../components/ui/Button';
 import { useAuth } from '../../auth/AuthProvider';
@@ -10,8 +11,7 @@ import {
   useGetMembershipsWithBalancesQuery,
   useGetPersonalQrQuery,
 } from '../../loyalty/api';
-import { LoyaltyCard, QRCodeDisplay } from '../components';
-import type { DisplayMembership } from '../types';
+import { LoyaltyCard } from '../components';
 
 export default function CustomerDashboardPage() {
   const { session, signOut } = useAuth();
@@ -21,22 +21,25 @@ export default function CustomerDashboardPage() {
   const [error, setError] = useState('');
   
   const { data: membershipsData, isLoading: isLoadingMemberships, error: membershipsError } =
-    useGetMembershipsWithBalancesQuery();
+    useGetMembershipsWithBalancesQuery(undefined, {
+      // The merchant cannot push updates: refresh on mount, focus and reconnect (no polling).
+      refetchOnMountOrArgChange: true,
+      refetchOnFocus: true,
+      refetchOnReconnect: true,
+    });
   const { data: qrData, isLoading: isLoadingQr, error: qrError } =
     useGetPersonalQrQuery();
+  // 404 means "not issued yet", not a failure.
+  const qrStatusFailed = Boolean(qrError) && !(typeof qrError === 'object' && qrError !== null && 'status' in qrError && qrError.status === 404);
 
-  // Add default thresholds for display if not provided by API
-  const memberships: DisplayMembership[] = (membershipsData ?? []).map(m => ({
-    ...m,
-    stampThreshold: 10, // Default stamp threshold for display
-    nextRewardThreshold: 100, // Default points threshold for display
-  }));
+  // Balance and rewards come from the API; nothing is defaulted client-side.
+  const memberships = membershipsData ?? [];
 
   // Filter to only active memberships
   const activeMemberships = memberships.filter(m => m.status === 'active');
   
   // Sort by joinedAt timestamp (most recent first)
-  // Deterministic tie-breaking: if timestamps are equal, sort by ID, then by businessName
+  // Deterministic tie-breaking: if timestamps are equal, sort by ID, then by business name
   const sortedMemberships = [...activeMemberships].sort((a, b) => {
     const aDate = new Date(a.joinedAt);
     const bDate = new Date(b.joinedAt);
@@ -50,7 +53,7 @@ export default function CustomerDashboardPage() {
     if (a.id < b.id) return 1;
     
     // Final tie-breaking: compare by businessName (deterministic)
-    return a.businessName.localeCompare(b.businessName);
+    return a.business.name.localeCompare(b.business.name);
   });
 
   const featuredMembership = sortedMemberships[0];
@@ -63,7 +66,7 @@ export default function CustomerDashboardPage() {
     try {
       await signOut(paths.home);
     } catch (logoutError) {
-      setError(getApiErrorMessage(logoutError, 'We could not sign you out. Please try again.'));
+      setError(getApiErrorMessage(logoutError, t('signOutError')));
     } finally {
       setPending(false);
     }
@@ -71,7 +74,7 @@ export default function CustomerDashboardPage() {
 
   return (
     <>
-      <a href="#workspace-main" className="sr-only">Skip to main content</a>
+      <a href="#workspace-main" className="sr-only">{t('skipToMainContent')}</a>
       <section id="workspace-main" className="workspace-page customer-wallet">
         <div className="experience-heading">
           <div>
@@ -101,47 +104,45 @@ export default function CustomerDashboardPage() {
           </div>
         </div>
       
-      <Section title="Your account">
-        <p className="panel-copy text-[var(--text-muted)]">You're ready to participate in loyalty programmes with local businesses.</p>
+      <Section title={t('customerAccountTitle')}>
+        <p className="panel-copy text-[var(--text-muted)]">{t('customerAccountIntro')}</p>
       </Section>
 
       {hasActiveMemberships && (
         <>
-          {/* Personal QR Code */}
-          <Section title="Your QR Code" subtitle="Show this to merchants to join programmes and earn rewards">
-            <div className="flex justify-center">
-              {qrData?.credential ? (
-                <>
-                  <div className="bg-[var(--surface)] rounded-[var(--radius-xl)] border border-[var(--border)] p-6 shadow-sm">
-                    <div className="flex justify-center mb-4">
-                      <QRCodeDisplay value={qrData.credential} size={150} />
-                    </div>
-                    <p className="text-center text-[var(--text-muted)] text-sm">
-                      Scan this code at participating businesses
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <div className="bg-[var(--surface)] rounded-[var(--radius-xl)] border border-[var(--border)] p-6 text-center">
-                  <Button variant="outline" isLoading={isLoadingQr}>
-                    Generate QR Code
-                  </Button>
-                </div>
-              )}
+          {/* Personal QR status: GET never returns the secret, so no QR is rendered here. */}
+          <Section title={t('yourQRCode')} subtitle={t('showQRToMerchant')}>
+            <div className="flex flex-col gap-3 rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--surface)] p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3 text-start">
+                <QrCode className="mt-0.5 h-6 w-6 shrink-0 text-[var(--brand)]" aria-hidden="true" />
+                <p className="text-[var(--text)]">
+                  {isLoadingQr
+                    ? t('loading')
+                    : qrData?.active
+                      ? t('personalQrStatusActive')
+                      : qrStatusFailed
+                        ? t('personalQrLoadError')
+                        : t('personalQrNotIssuedTitle')}
+                </p>
+              </div>
+              <Link
+                to={paths.customerQr}
+                className="inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--radius-lg)] border border-[var(--brand)] bg-[var(--brand)] px-4 text-sm font-semibold text-white hover:bg-[var(--brand-dark)] sm:w-auto"
+              >
+                {t('personalQrOpen')}
+              </Link>
             </div>
           </Section>
 
           {/* Featured Membership */}
           {featuredMembership && (
-            <Section title="Your Loyalty Cards" subtitle="Loyalty programmes you're enrolled in">
+            <Section title={t('yourLoyaltyCards')} subtitle={t('loyaltyCardsSubtitle')}>
               {/* Featured membership - displayed prominently */}
               <div className="mb-6">
                 <LoyaltyCard 
                   key={featuredMembership.id} 
                   membership={featuredMembership} 
                   isFeatured 
-                  onClick={() => navigate(`/customer/memberships/${featuredMembership.id}`)}
-                  t={t}
                 />
               </div>
               
@@ -152,8 +153,6 @@ export default function CustomerDashboardPage() {
                     <LoyaltyCard 
                       key={membership.id} 
                       membership={membership}
-                      onClick={() => navigate(`/customer/memberships/${membership.id}`)}
-                      t={t}
                     />
                   ))}
                 </div>
@@ -164,23 +163,23 @@ export default function CustomerDashboardPage() {
       )}
 
       {!hasActiveMemberships && !isLoadingMemberships && (
-        <Section title="Get started" subtitle="Join loyalty programmes">
+        <Section title={t('getStartedTitle')} subtitle={t('getStartedSubtitle')}>
           <div className="info-card bg-[var(--subtle)] border border-[var(--border)] rounded-[var(--radius-lg)] p-4">
             <div className="text-[var(--text-muted)]">
-              Visit a participating business and scan their QR code to join their loyalty programme.
+              {t('getStartedBody')}
             </div>
           </div>
         </Section>
       )}
 
-      {(membershipsError || qrError) && (
+      {(membershipsError || qrStatusFailed) && (
         <div className="bg-[var(--danger-light)] border border-[var(--danger)] rounded-[var(--radius-lg)] p-4 text-[var(--danger)]">
-          Failed to load your loyalty data. Please try again.
+          {t('loyaltyDataLoadError')}
         </div>
       )}
 
       {isLoadingMemberships && (
-        <p role="status" className="text-[var(--text-muted)]">Loading your programmes...</p>
+        <p role="status" className="text-[var(--text-muted)]">{t('loadingProgrammes')}</p>
       )}
       
       {error && (
