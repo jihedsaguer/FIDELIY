@@ -5,7 +5,8 @@ import { Sidebar } from './Sidebar';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { ScannerProvider, useScanner } from '../../features/loyalty/context/ScannerContext';
 import { ScannerModal } from '../../features/loyalty/components/ScannerModal';
-import { QrCode } from 'lucide-react';
+import { Award, LayoutDashboard, MoreHorizontal, QrCode } from 'lucide-react';
+import { paths } from '../../app/routes/paths';
 
 type Workspace = 'customer' | 'merchant';
 
@@ -39,11 +40,48 @@ function CustomerBottomNav() {
   );
 }
 
+// Merchant mobile bottom navigation (< md). Desktop uses the Sidebar.
+function MerchantBottomNav() {
+  const { t } = useI18n();
+  const { openScanner } = useScanner();
+
+  const itemClasses =
+    'gap-1 rounded-[var(--radius-lg)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]';
+  const linkClasses = ({ isActive }: { isActive: boolean }) =>
+    `${itemClasses} ${isActive ? 'active text-[var(--brand)]' : 'text-[var(--text-muted)] hover:text-[var(--brand)]'}`;
+
+  return (
+    <div className="md:hidden">
+      <nav className="bottom-nav" aria-label={t('merchantSpace')}>
+        <NavLink to={paths.merchantDashboard} end className={linkClasses}>
+          <LayoutDashboard className="w-5 h-5" />
+          <span className="text-xs font-semibold">{t('home')}</span>
+        </NavLink>
+        <NavLink to={paths.merchantPrograms} className={linkClasses}>
+          <Award className="w-5 h-5" />
+          <span className="text-xs font-semibold">{t('programs')}</span>
+        </NavLink>
+        <button
+          type="button"
+          onClick={openScanner}
+          className={`flex-1 grid place-items-center min-h-[44px] text-[var(--text-muted)] hover:text-[var(--brand)] ${itemClasses}`}
+        >
+          <QrCode className="w-5 h-5" />
+          <span className="text-xs font-semibold">{t('scan')}</span>
+        </button>
+        <NavLink to={paths.merchantMore} className={linkClasses}>
+          <MoreHorizontal className="w-5 h-5" />
+          <span className="text-xs font-semibold">{t('more')}</span>
+        </NavLink>
+      </nav>
+    </div>
+  );
+}
+
 // Merchant Layout with Scanner Modal
 function MerchantLayoutWithScanner() {
-  const { t } = useI18n();
   const { signOut } = useAuth();
-  const { isScannerOpen, openScanner, closeScanner } = useScanner();
+  const { isScannerOpen, closeScanner } = useScanner();
 
   return (
     <>
@@ -51,25 +89,18 @@ function MerchantLayoutWithScanner() {
         <Sidebar workspace="merchant" onSignOut={() => signOut()} />
         <div className="ml-0 md:ml-16 lg:ml-64 transition-all duration-300">
           <header className="sticky top-0 z-10 bg-[var(--surface)] border-b border-[var(--border)]">
-            <div className="flex items-center justify-between h-16 px-4 md:px-6 lg:px-8">
-              {/* Scan button for mobile - visible when sidebar is collapsed */}
-              <button
-                className="md:hidden flex items-center gap-2 px-4 py-2 bg-[var(--glass-brand)] text-[var(--brand)] rounded-lg text-sm font-medium hover:bg-[var(--glass-brand-strong)] transition-colors"
-                onClick={openScanner}
-              >
-                <QrCode className="w-5 h-5" />
-                <span>{t('scan')}</span>
-              </button>
+            <div className="flex items-center justify-end h-16 px-4 md:px-6 lg:px-8">
               <div className="flex items-center gap-2">
                 <LanguageSwitcher />
               </div>
             </div>
           </header>
-          <main className="p-4 md:p-6 lg:p-8" id="main-content">
+          <main className="p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-6 lg:p-8" id="main-content">
             <Outlet />
           </main>
         </div>
       </div>
+      <MerchantBottomNav />
       
       {/* Scanner Modal */}
       <ScannerModal

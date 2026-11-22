@@ -1,4 +1,4 @@
-﻿-- Migration: 0010_phone_unverified_provisioning.sql
+-- Migration: 0010_phone_unverified_provisioning.sql
 -- Update customer account provisioning trigger to support unverified phone sign-in
 
 CREATE OR REPLACE FUNCTION public.provision_customer_account_from_user()

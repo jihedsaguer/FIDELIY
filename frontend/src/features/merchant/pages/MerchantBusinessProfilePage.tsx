@@ -1,7 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useI18n } from '../../../shared/i18n/i18n';
-import { Button, Card } from '../../../components/ui';
-import { SubmitButton } from '../../../components/ui/SubmitButton';
+import { Button, Card, Section, FormFeedback, Input } from '../../../components/ui';
 import { useNavigate } from 'react-router-dom';
 import { useGetBusinessSetupQuery, useUpdateBusinessMutation, useUploadLogoMutation, useGetLogoQuery } from '@/features/business-onboarding/api/businessOnboardingApi';
 import { Building2, Mail, Phone, Globe, Image as ImageIcon } from 'lucide-react';
@@ -207,18 +206,18 @@ export default function MerchantBusinessProfilePage() {
   
   if (isLoading) {
     return (
-      <main className="flex-1 bg-[var(--background)] p-4 md:p-8">
+      <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
         <div className="mx-auto max-w-screen-md w-full space-y-6">
           <div className="h-10 w-64 bg-[var(--subtle)] rounded-lg animate-pulse" />
           <div className="h-64 w-full bg-[var(--subtle)] rounded-lg animate-pulse" />
         </div>
-      </main>
+      </div>
     );
   }
 
   if (hasError) {
     return (
-      <main className="flex-1 bg-[var(--background)] p-4 md:p-8">
+      <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
         <div className="mx-auto max-w-screen-md w-full">
           <Card className="p-6 text-center">
             <h2 className="text-[var(--danger)] text-lg font-semibold mb-2">{t('error')}</h2>
@@ -228,13 +227,13 @@ export default function MerchantBusinessProfilePage() {
             </Button>
           </Card>
         </div>
-      </main>
+      </div>
     );
   }
 
   if (!business) {
     return (
-      <main className="flex-1 bg-[var(--background)] p-4 md:p-8">
+      <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
         <div className="mx-auto max-w-screen-md w-full">
           <Card className="p-6 text-center">
             <h2 className="text-[var(--text)] text-lg font-semibold mb-2">{t('noBusiness')}</h2>
@@ -244,12 +243,12 @@ export default function MerchantBusinessProfilePage() {
             </Button>
           </Card>
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="flex-1 bg-[var(--background)] p-4 md:p-8">
+    <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
       <div className="mx-auto max-w-screen-md w-full">
         <header className="mb-8 flex items-center justify-between">
           <div>
@@ -267,19 +266,10 @@ export default function MerchantBusinessProfilePage() {
           )}
         </header>
 
-        {error && (
-          <Card className="p-4 mb-6 bg-[var(--danger-light)] border border-[var(--danger)]">
-            <p className="text-[var(--danger)] text-sm">{error}</p>
-          </Card>
-        )}
+        <Section title={t('businessProfile')}>
+          <FormFeedback error={error || undefined} success={success || undefined} />
 
-        {success && (
-          <Card className="p-4 mb-6 bg-[var(--success-light)] border border-[var(--success)]">
-            <p className="text-[var(--success)] text-sm">{success}</p>
-          </Card>
-        )}
-
-        <Card className="p-6">
+          <Card className="p-6">
           {isEditing ? (
             <form className="space-y-6" onSubmit={handleSubmit}>
               {/* Logo Upload */}
@@ -325,19 +315,13 @@ export default function MerchantBusinessProfilePage() {
               </div>
 
               {/* Business Name */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-[var(--text)]">
-                  {t('businessName')}
-                </label>
-                <input
-                  type="text"
-                  value={editData.name || ''}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
-                  className="w-full p-3 rounded-lg bg-[var(--surface)] border border-[var(--border)] text-[var(--text)]"
-                  disabled={isUpdating || isUploading}
-                  required
-                />
-              </div>
+              <Input
+                label={t('businessName')}
+                value={editData.name || ''}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                disabled={isUpdating || isUploading}
+                required
+              />
 
               {/* Business Description */}
               <div className="space-y-2">
@@ -347,24 +331,19 @@ export default function MerchantBusinessProfilePage() {
                 <textarea
                   value={editData.description || ''}
                   onChange={(e) => handleInputChange('description', e.target.value)}
-                  className="w-full p-3 rounded-lg bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] min-h-[100px]"
                   disabled={isUpdating || isUploading}
+                  className="w-full p-3 rounded-[var(--radius-lg)] bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] min-h-[100px]"
                 />
               </div>
 
               {/* Business Phone */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-[var(--text)]">
-                  {t('businessPhone')}
-                </label>
-                <input
-                  type="tel"
-                  value={editData.businessPhone || ''}
-                  onChange={(e) => handleInputChange('businessPhone', e.target.value)}
-                  className="w-full p-3 rounded-lg bg-[var(--surface)] border border-[var(--border)] text-[var(--text)]"
-                  disabled={isUpdating || isUploading}
-                />
-              </div>
+              <Input
+                label={t('businessPhone')}
+                type="tel"
+                value={editData.businessPhone || ''}
+                onChange={(e) => handleInputChange('businessPhone', e.target.value)}
+                disabled={isUpdating || isUploading}
+              />
 
               {/* Phone Visibility */}
               <div className="space-y-2">
@@ -402,11 +381,12 @@ export default function MerchantBusinessProfilePage() {
                 >
                   {t('cancel')}
                 </Button>
-                <SubmitButton
-                  pending={isUpdating || isUploading}
-                  idle={t('save')}
-                  waiting={t('saving')}
-                />
+                <Button
+                  type="submit"
+                  isLoading={isUpdating || isUploading}
+                >
+                  {t('save')}
+                </Button>
               </div>
             </form>
           ) : (
@@ -487,6 +467,7 @@ export default function MerchantBusinessProfilePage() {
             </div>
           )}
         </Card>
+        </Section>
 
         <div className="mt-8 text-center">
           <Button variant="ghost" onClick={() => navigate('/merchant')}>
@@ -494,6 +475,6 @@ export default function MerchantBusinessProfilePage() {
           </Button>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

@@ -7,11 +7,14 @@ import path from 'path'
 export default defineConfig({
   plugins: [
     react(),
-    tailwindcss(),
+    tailwindcss({
+      config: './tailwind.config.mjs',
+    }),
   ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@lib': path.resolve(__dirname, './src/lib'),
     },
   },
   optimizeDeps: {

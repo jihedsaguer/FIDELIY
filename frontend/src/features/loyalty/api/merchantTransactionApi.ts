@@ -1,8 +1,21 @@
 import { baseApi } from '../../../services/api/baseApi';
 
 /**
- * Merchant transaction API types
+ * Merchant transaction API (checkpoint 6B-C contract, ARCHITECTURE.md 6.5).
+ * Mirrors backend/src/features/merchants/dto/merchant-transaction.dto.ts.
+ * Amounts are TND decimal strings with at most 3 decimals (e.g. "12.500").
  */
+
+/** `code` of the 409 returned when a purchase was recorded in the last 10 minutes. */
+export const RECENT_EARNING_CONFIRMATION_REQUIRED = 'RECENT_EARNING_CONFIRMATION_REQUIRED';
+
+export type LoyaltyActivityType = 'stamps' | 'points';
+export type LoyaltyTransactionCategory = 'purchase' | 'redemption' | 'reversal' | 'manual_adjustment';
+
+export interface Balance {
+  stamps: number;
+  points: number;
+}
 
 export interface CustomerForTransaction {
   id: string;
@@ -14,36 +27,26 @@ export interface MembershipForTransaction {
   id: string;
   status: 'active' | 'inactive';
   joinedAt: string;
-}
-
-export interface Balance {
-  stamps: number;
-  points: number;
+  enrolment: 'existing' | 'joined' | 'rejoined';
 }
 
 export interface ProgramForTransaction {
   id: string;
   type: 'stamps' | 'points' | 'both';
   version: number;
-  name: string;
-  configuration: {
-    stamps?: {
-      stampsPerPurchase: number;
-      maxStampsPerTransaction: number;
-    };
-    points?: {
-      pointsPerCurrencyUnit: number;
-      currencyUnit: string;
-      maxPointsPerTransaction: number;
-    };
+  name: string | null;
+  configurations: {
+    stamps?: { configurationId: string };
+    points?: { configurationId: string; earningRate: string | null };
   };
 }
 
-export interface RewardForTransaction {
-  id: string;
+export interface RewardOption {
+  configurationId: string;
+  rewardIndex: number;
   name: string;
-  pointsCost: number;
-  stampsCost: number | null;
+  activityType: LoyaltyActivityType;
+  cost: number;
   available: boolean;
 }
 
@@ -52,7 +55,7 @@ export interface CustomerForTransactionResponse {
   membership: MembershipForTransaction;
   balance: Balance;
   program: ProgramForTransaction;
-  eligibleRewards: RewardForTransaction[];
+  rewards: RewardOption[];
 }
 
 export interface ResolveCustomerForTransactionDto {
@@ -62,45 +65,36 @@ export interface ResolveCustomerForTransactionDto {
 
 export interface CalculateEarningsDto {
   membershipId: string;
-  purchaseAmount: number;
-  branchId?: string;
-}
-
-export interface EarningsCalculation {
-  stamps?: {
-    stampsPerPurchase: number;
-    transactionsCount: number;
-  };
-  points?: {
-    pointsPerCurrencyUnit: number;
-    calculation: string;
-  };
+  /** Required for programmes that include points; optional for stamps-only. */
+  purchaseAmount?: string;
 }
 
 export interface CalculateEarningsResponse {
-  purchaseAmount: number;
+  purchaseAmount: string | null;
   stampsToEarn: number;
   pointsToEarn: number;
+  earningRate: string | null;
   totalStampsAfter: number;
   totalPointsAfter: number;
-  calculation: EarningsCalculation;
 }
 
 export interface CreateLoyaltyTransactionDto {
   membershipId: string;
-  purchaseAmount: number;
-  stampsEarned?: number;
-  pointsEarned?: number;
+  purchaseAmount?: string;
+  /** Required when the business has more than one branch. */
   branchId?: string;
-  idempotencyKey?: string;
+  idempotencyKey: string;
+  /** Explicit confirmation after RECENT_EARNING_CONFIRMATION_REQUIRED. */
+  confirmRepeat?: boolean;
 }
 
 export interface CreateLoyaltyTransactionResponse {
   transactionId: string;
   membershipId: string;
-  purchaseAmount: number;
+  purchaseAmount: string | null;
   stampsEarned: number;
   pointsEarned: number;
+  earningRate: string | null;
   newBalance: Balance;
   occurredAt: string;
   idempotencyKey: string;
@@ -108,36 +102,90 @@ export interface CreateLoyaltyTransactionResponse {
 
 export interface RedeemRewardDto {
   membershipId: string;
-  rewardId: string;
+  configurationId: string;
+  rewardIndex: number;
   branchId?: string;
-  idempotencyKey?: string;
-}
-
-export interface RewardInfo {
-  id: string;
-  name: string;
-  pointsCost: number;
-  stampsCost: number | null;
+  idempotencyKey: string;
 }
 
 export interface RedeemRewardResponse {
-  redemptionId: string;
-  reward: RewardInfo;
-  customerBalanceBefore: Balance;
-  customerBalanceAfter: Balance;
+  transactionId: string;
+  membershipId: string;
+  reward: Omit<RewardOption, 'available'>;
+  newBalance: Balance;
   occurredAt: string;
+  idempotencyKey: string;
+}
+
+export interface ReverseTransactionDto {
+  transactionId: string;
+  reason: string;
+  idempotencyKey: string;
+}
+
+export interface ReverseTransactionResponse {
+  transactionId: string;
+  reversesTransactionId: string;
+  membershipId: string;
+  reason: string;
+  stampsDelta: number;
+  pointsDelta: number;
+  newBalance: Balance;
+  occurredAt: string;
+  idempotencyKey: string;
+}
+
+export interface TransactionHistoryEntry {
+  activityType: LoyaltyActivityType;
+  delta: number;
+  programConfigurationId: string;
+  earningRate: string | null;
+}
+
+export interface MerchantTransactionHistoryItem {
+  id: string;
+  membershipId: string;
+  branchId: string | null;
+  category: LoyaltyTransactionCategory;
+  occurredAt: string;
+  purchaseAmount: string | null;
+  reversalReason: string | null;
+  reversesTransactionId: string | null;
+  reversedByTransactionId: string | null;
+  stampsDelta: number;
+  pointsDelta: number;
+  entries: TransactionHistoryEntry[];
+}
+
+/** Totals for one currency over the whole membership ledger (server-computed). */
+export interface CurrencyTotals {
+  earned: number;
+  earningsReversed: number;
+  redeemed: number;
+  redemptionsReversed: number;
+  adjustments: number;
+  balance: number;
+}
+
+/** Present only when the request filters by membershipId. */
+export interface MerchantTransactionHistorySummary {
+  stamps: CurrencyTotals;
+  points: CurrencyTotals;
+  transactionCount: number;
+  programType: 'stamps' | 'points' | 'both' | null;
+  rewards: Array<Omit<RewardOption, 'available'>>;
+}
+
+export interface MerchantTransactionHistoryResponse {
+  transactions: MerchantTransactionHistoryItem[];
+  summary?: MerchantTransactionHistorySummary;
 }
 
 /**
- * Merchant transaction API endpoints
- * Require MerchantGuard authentication
+ * Merchant transaction API endpoints (MerchantGuard).
  */
 export const merchantTransactionApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    /**
-     * Resolve a customer QR credential for a loyalty transaction
-     * Returns customer info, balance, programme details, and eligible rewards
-     */
     resolveCustomerForTransaction: builder.mutation<
       CustomerForTransactionResponse,
       ResolveCustomerForTransactionDto
@@ -147,17 +195,13 @@ export const merchantTransactionApi = baseApi.injectEndpoints({
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['Session'],
+      // Never 'Session': a session refetch makes ProtectedRoute unmount the whole workspace
+      // (including the open scanner and its result). A scan can enrol a customer, so only the list is stale.
+      invalidatesTags: ['MerchantCustomers'],
     }),
 
-    /**
-     * Calculate loyalty earnings for a purchase amount
-     * Returns the stamps and points that would be earned
-     */
-    calculateEarnings: builder.mutation<
-      CalculateEarningsResponse,
-      CalculateEarningsDto
-    >({
+    /** Preview only; nothing is written. */
+    calculateEarnings: builder.mutation<CalculateEarningsResponse, CalculateEarningsDto>({
       query: (body) => ({
         url: '/merchants/transactions/calculate-earnings',
         method: 'POST',
@@ -165,10 +209,6 @@ export const merchantTransactionApi = baseApi.injectEndpoints({
       }),
     }),
 
-    /**
-     * Create a loyalty transaction for a customer
-     * Records stamps and/or points earned from a purchase
-     */
     createLoyaltyTransaction: builder.mutation<
       CreateLoyaltyTransactionResponse,
       CreateLoyaltyTransactionDto
@@ -178,24 +218,34 @@ export const merchantTransactionApi = baseApi.injectEndpoints({
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['Program'],
+      invalidatesTags: ['Program', 'Transaction', 'MerchantCustomers'],
     }),
 
-    /**
-     * Redeem a reward for a customer
-     * Deducts the reward cost from the customer's balance
-     * Note: Requires rewards table to be configured in backend
-     */
-    redeemReward: builder.mutation<
-      RedeemRewardResponse,
-      RedeemRewardDto
-    >({
+    redeemReward: builder.mutation<RedeemRewardResponse, RedeemRewardDto>({
       query: (body) => ({
         url: '/merchants/transactions/redeem-reward',
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['Program'],
+      invalidatesTags: ['Program', 'Transaction', 'MerchantCustomers'],
+    }),
+
+    reverseTransaction: builder.mutation<ReverseTransactionResponse, ReverseTransactionDto>({
+      query: ({ transactionId, reason, idempotencyKey }) => ({
+        url: `/merchants/transactions/${encodeURIComponent(transactionId)}/reverse`,
+        method: 'POST',
+        body: { reason, idempotencyKey },
+      }),
+      invalidatesTags: ['Transaction', 'MerchantCustomers'],
+    }),
+
+    listTransactions: builder.query<MerchantTransactionHistoryResponse, { membershipId: string }>({
+      query: ({ membershipId }) => ({
+        url: '/merchants/transactions',
+        method: 'GET',
+        params: { membershipId },
+      }),
+      providesTags: ['Transaction'],
     }),
   }),
 });
@@ -205,4 +255,6 @@ export const {
   useCalculateEarningsMutation,
   useCreateLoyaltyTransactionMutation,
   useRedeemRewardMutation,
+  useReverseTransactionMutation,
+  useListTransactionsQuery,
 } = merchantTransactionApi;

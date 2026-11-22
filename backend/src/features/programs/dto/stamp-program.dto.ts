@@ -14,11 +14,14 @@ import {
  */
 export class StampEarningRuleDto {
   /**
-   * Number of purchases/visits required to earn one stamp
+   * Deprecated (DECISIONS.md #15 rule 2): earning is one stamp per confirmed
+   * purchase and this value is not used to calculate stamps. Still accepted
+   * and stored when supplied; historical configurations are not rewritten.
    */
+  @IsOptional()
   @IsInt()
   @Min(1)
-  purchasesPerStamp!: number;
+  purchasesPerStamp?: number;
 
   /**
    * Optional description of the earning rule

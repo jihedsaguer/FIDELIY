@@ -1,27 +1,49 @@
-import { IsString, IsUUID, IsNumber, IsOptional, IsPositive, Min, Max, IsDateString, IsNotEmpty } from 'class-validator';
+import {
+  IsBoolean,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  Min,
+} from 'class-validator';
+import type { LoyaltyActivityType, LoyaltyTransactionCategory } from '../../loyalty/loyalty-ledger.service';
+
+/**
+ * Checkpoint 6B-C merchant transaction contract (DECISIONS.md #15).
+ * Amounts are TND decimal strings with at most 3 decimals (e.g. "12.500");
+ * they are converted to integer millimes once, in the service.
+ */
+
+export interface LoyaltyBalanceResponse {
+  stamps: number;
+  points: number;
+}
+
+export interface RewardOption {
+  configurationId: string;
+  rewardIndex: number;
+  name: string;
+  activityType: LoyaltyActivityType;
+  cost: number;
+  available: boolean;
+}
 
 /**
  * DTO for resolving a customer QR and preparing a loyalty transaction.
  */
 export class ResolveCustomerForTransactionDto {
-  /**
-   * The customer's personal QR credential.
-   */
   @IsString()
   @IsNotEmpty()
   qrCredential!: string;
 
-  /**
-   * Optional branch ID where the transaction is taking place.
-   */
+  /** Accepted for compatibility; not used by the resolution. */
   @IsOptional()
   @IsUUID()
   branchId?: string;
 }
 
-/**
- * Response DTO for resolved customer information.
- */
 export interface CustomerForTransactionResponse {
   customer: {
     id: string;
@@ -32,270 +54,202 @@ export interface CustomerForTransactionResponse {
     id: string;
     status: 'active' | 'inactive';
     joinedAt: string;
+    /** Whether this scan enrolled the customer (DECISIONS.md #21). */
+    enrolment: 'existing' | 'joined' | 'rejoined';
   };
-  balance: {
-    stamps: number;
-    points: number;
-  };
+  balance: LoyaltyBalanceResponse;
   program: {
     id: string;
     type: 'stamps' | 'points' | 'both';
     version: number;
-    name: string;
-    configuration: {
-      stamps?: {
-        stampsPerPurchase: number;
-        maxStampsPerTransaction: number;
-      };
-      points?: {
-        pointsPerCurrencyUnit: number;
-        currencyUnit: string;
-        maxPointsPerTransaction: number;
-      };
+    name: string | null;
+    configurations: {
+      stamps?: { configurationId: string };
+      points?: { configurationId: string; earningRate: string | null };
     };
   };
-  eligibleRewards: Array<{
-    id: string;
-    name: string;
-    pointsCost: number;
-    stampsCost: number | null;
-    available: boolean;
-  }>;
+  rewards: RewardOption[];
 }
 
 /**
- * DTO for calculating loyalty earnings from a purchase.
+ * Preview only; nothing is written.
  */
 export class CalculateEarningsDto {
-  /**
-   * The resolved customer's membership ID.
-   */
   @IsUUID()
   @IsNotEmpty()
   membershipId!: string;
 
-  /**
-   * The purchase amount in the business's currency.
-   */
-  @IsNumber()
-  @IsPositive()
-  @IsNotEmpty()
-  purchaseAmount!: number;
-
-  /**
-   * Optional branch ID where the purchase occurred.
-   */
-  @IsOptional()
-  @IsUUID()
-  branchId?: string;
-}
-
-/**
- * Response DTO for calculated loyalty earnings.
- */
-export interface CalculateEarningsResponse {
-  purchaseAmount: number;
-  stampsToEarn: number;
-  pointsToEarn: number;
-  totalStampsAfter: number;
-  totalPointsAfter: number;
-  calculation: {
-    stamps?: {
-      stampsPerPurchase: number;
-      transactionsCount: number;
-    };
-    points?: {
-      pointsPerCurrencyUnit: number;
-      calculation: string;
-    };
-  };
-}
-
-/**
- * DTO for creating a loyalty transaction.
- */
-export class CreateLoyaltyTransactionDto {
-  /**
-   * The customer's membership ID.
-   */
-  @IsUUID()
-  @IsNotEmpty()
-  membershipId!: string;
-
-  /**
-   * The purchase amount.
-   */
-  @IsNumber()
-  @IsPositive()
-  @IsNotEmpty()
-  purchaseAmount!: number;
-
-  /**
-   * Stamps to award (if applicable).
-   */
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  stampsEarned?: number;
-
-  /**
-   * Points to award (if applicable).
-   */
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  pointsEarned?: number;
-
-  /**
-   * Optional branch ID.
-   */
-  @IsOptional()
-  @IsUUID()
-  branchId?: string;
-
-  /**
-   * Idempotency key to prevent duplicate transactions.
-   * Will be generated if not provided.
-   */
+  /** Required for programmes that include points; optional for stamp-only programmes. */
   @IsOptional()
   @IsString()
-  @Max(128)
-  idempotencyKey?: string;
+  @MaxLength(32)
+  purchaseAmount?: string;
 }
 
-/**
- * Response DTO for created loyalty transaction.
- */
+export interface CalculateEarningsResponse {
+  purchaseAmount: string | null;
+  stampsToEarn: number;
+  pointsToEarn: number;
+  /** Points per TND applied, two decimals (e.g. "2.50"); null when the programme has no points. */
+  earningRate: string | null;
+  totalStampsAfter: number;
+  totalPointsAfter: number;
+}
+
+export class CreateLoyaltyTransactionDto {
+  @IsUUID()
+  @IsNotEmpty()
+  membershipId!: string;
+
+  /** Required for programmes that include points; optional for stamp-only programmes. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  purchaseAmount?: string;
+
+  /** Required when the business has more than one branch. */
+  @IsOptional()
+  @IsUUID()
+  branchId?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(128)
+  idempotencyKey!: string;
+
+  /**
+   * Explicit merchant confirmation after a RECENT_EARNING_CONFIRMATION_REQUIRED
+   * warning. Not part of the idempotency fingerprint.
+   */
+  @IsOptional()
+  @IsBoolean()
+  confirmRepeat?: boolean;
+}
+
 export interface CreateLoyaltyTransactionResponse {
   transactionId: string;
   membershipId: string;
-  purchaseAmount: number;
+  purchaseAmount: string | null;
   stampsEarned: number;
   pointsEarned: number;
-  newBalance: {
-    stamps: number;
-    points: number;
-  };
+  earningRate: string | null;
+  newBalance: LoyaltyBalanceResponse;
   occurredAt: string;
   idempotencyKey: string;
 }
 
-/**
- * DTO for redeeming a reward.
- */
 export class RedeemRewardDto {
-  /**
-   * The customer's membership ID.
-   */
   @IsUUID()
   @IsNotEmpty()
   membershipId!: string;
 
-  /**
-   * The reward ID to redeem.
-   */
+  /** Programme configuration that stores the reward threshold. */
   @IsUUID()
   @IsNotEmpty()
-  rewardId!: string;
+  configurationId!: string;
 
-  /**
-   * Optional branch ID where redemption occurs.
-   */
+  /** Index of the reward in the configuration's rewardThresholds. */
+  @IsInt()
+  @Min(0)
+  rewardIndex!: number;
+
+  /** Required when the business has more than one branch. */
   @IsOptional()
   @IsUUID()
   branchId?: string;
 
-  /**
-   * Idempotency key to prevent duplicate redemptions.
-   */
-  @IsOptional()
   @IsString()
-  @Max(128)
-  idempotencyKey?: string;
+  @IsNotEmpty()
+  @MaxLength(128)
+  idempotencyKey!: string;
 }
 
-/**
- * Response DTO for reward redemption.
- */
 export interface RedeemRewardResponse {
-  redemptionId: string;
-  reward: {
-    id: string;
-    name: string;
-    pointsCost: number;
-    stampsCost: number | null;
-  };
-  customerBalanceBefore: {
-    stamps: number;
-    points: number;
-  };
-  customerBalanceAfter: {
-    stamps: number;
-    points: number;
-  };
+  transactionId: string;
+  membershipId: string;
+  reward: Omit<RewardOption, 'available'>;
+  newBalance: LoyaltyBalanceResponse;
   occurredAt: string;
+  idempotencyKey: string;
 }
 
-/**
- * DTO for listing customer loyalty transactions.
- */
-export class ListCustomerTransactionsDto {
-  /**
-   * The customer's membership ID.
-   */
-  @IsUUID()
-  @IsNotEmpty()
-  membershipId!: string;
-
-  /**
-   * Maximum number of transactions to return.
-   */
-  @IsOptional()
-  @IsNumber()
-  @Min(1)
-  @Max(100)
-  limit?: number;
-
-  /**
-   * Number of transactions to skip for pagination.
-   */
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  offset?: number;
-}
-
-/**
- * DTO for correcting/reversing a transaction.
- */
-export class CorrectTransactionDto {
-  /**
-   * The original transaction ID to correct.
-   */
-  @IsUUID()
-  @IsNotEmpty()
-  originalTransactionId!: string;
-
-  /**
-   * The customer's membership ID.
-   */
-  @IsUUID()
-  @IsNotEmpty()
-  membershipId!: string;
-
-  /**
-   * Reason for the correction.
-   */
+export class ReverseTransactionDto {
   @IsString()
-  @Min(1)
-  @Max(500)
   @IsNotEmpty()
+  @MaxLength(500)
   reason!: string;
 
-  /**
-   * Optional branch ID.
-   */
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(128)
+  idempotencyKey!: string;
+}
+
+export interface ReverseTransactionResponse {
+  transactionId: string;
+  reversesTransactionId: string;
+  membershipId: string;
+  reason: string;
+  stampsDelta: number;
+  pointsDelta: number;
+  newBalance: LoyaltyBalanceResponse;
+  occurredAt: string;
+  idempotencyKey: string;
+}
+
+export class ListTransactionsQueryDto {
   @IsOptional()
   @IsUUID()
-  branchId?: string;
+  membershipId?: string;
+}
+
+export interface TransactionHistoryEntry {
+  activityType: LoyaltyActivityType;
+  delta: number;
+  programConfigurationId: string;
+  earningRate: string | null;
+}
+
+export interface TransactionHistoryItem {
+  id: string;
+  membershipId: string;
+  branchId: string | null;
+  category: LoyaltyTransactionCategory;
+  occurredAt: string;
+  purchaseAmount: string | null;
+  reversalReason: string | null;
+  reversesTransactionId: string | null;
+  reversedByTransactionId: string | null;
+  stampsDelta: number;
+  pointsDelta: number;
+  entries: TransactionHistoryEntry[];
+}
+
+/** Totals for one currency (stamps or points) over the whole membership ledger. */
+export interface CurrencyTotals {
+  earned: number;
+  /** Positive amount taken back by reversing purchases. */
+  earningsReversed: number;
+  /** Positive amount spent on rewards. */
+  redeemed: number;
+  /** Positive amount returned by reversing redemptions. */
+  redemptionsReversed: number;
+  /** Net manual adjustments (expected 0 in Release 1). */
+  adjustments: number;
+  /** earned - earningsReversed - redeemed + redemptionsReversed + adjustments. */
+  balance: number;
+}
+
+/** Present only when the request filters by membershipId. */
+export interface TransactionHistorySummary {
+  stamps: CurrencyTotals;
+  points: CurrencyTotals;
+  transactionCount: number;
+  programType: 'stamps' | 'points' | 'both' | null;
+  rewards: Array<Omit<RewardOption, 'available'>>;
+}
+
+export interface TransactionHistoryResponse {
+  transactions: TransactionHistoryItem[];
+  summary?: TransactionHistorySummary;
 }

@@ -1,11 +1,13 @@
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
   check,
   foreignKey,
   index,
   integer,
   pgEnum,
   pgTable,
+  text,
   timestamp,
   uniqueIndex,
   uuid,
@@ -17,7 +19,8 @@ import { programConfigurations } from '../../programs/schemas';
 
 export const loyaltyTransactionCategoryEnum = pgEnum(
   'loyalty_transaction_category',
-  ['purchase', 'manual_adjustment', 'reversal'],
+  // 'redemption' added by migration 0012 (Checkpoint 6B-C).
+  ['purchase', 'manual_adjustment', 'reversal', 'redemption'],
 );
 
 export const loyaltyActivityTypeEnum = pgEnum('loyalty_activity_type', [
@@ -42,6 +45,9 @@ export const loyaltyTransactions = pgTable(
     idempotencyKey: varchar('idempotency_key', { length: 128 }).notNull(),
     requestFingerprint: varchar('request_fingerprint', { length: 64 }).notNull(),
     reversesTransactionId: uuid('reverses_transaction_id'),
+    // Migration 0013: integer millimes (TND x 1000) and the reversal reason.
+    purchaseAmountMillimes: bigint('purchase_amount_millimes', { mode: 'number' }),
+    reversalReason: text('reversal_reason'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
   },
   (table) => ({
@@ -68,6 +74,17 @@ export const loyaltyTransactions = pgTable(
       'loyalty_transactions_reversal_category',
       sql`(category = 'reversal' AND reverses_transaction_id IS NOT NULL)
         OR (category <> 'reversal' AND reverses_transaction_id IS NULL)`,
+    ),
+    // Migration 0013 adds the two checks below as NOT VALID (historical
+    // append-only rows are not re-checked).
+    purchaseAmountNonNegative: check(
+      'loyalty_transactions_purchase_amount_non_negative',
+      sql`purchase_amount_millimes IS NULL OR purchase_amount_millimes >= 0`,
+    ),
+    reversalReasonRule: check(
+      'loyalty_transactions_reversal_reason',
+      sql`(category = 'reversal' AND reversal_reason IS NOT NULL AND length(reversal_reason) BETWEEN 1 AND 500)
+        OR (category <> 'reversal' AND reversal_reason IS NULL)`,
     ),
     idBusinessMembershipUnique: uniqueIndex(
       'loyalty_transactions_id_business_membership_unique',
@@ -119,6 +136,8 @@ export const loyaltyActivityEntries = pgTable(
       .notNull()
       .references(() => programConfigurations.id, { onDelete: 'restrict' }),
     reversesEntryId: uuid('reverses_entry_id'),
+    // Migration 0013: points earning-rate snapshot in hundredths of a point per TND.
+    earningRateHundredths: integer('earning_rate_hundredths'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
   },
   (table) => ({
@@ -136,6 +155,10 @@ export const loyaltyActivityEntries = pgTable(
     nonzeroDelta: check(
       'loyalty_activity_entries_nonzero_delta',
       sql`delta <> 0`,
+    ),
+    earningRateSnapshot: check(
+      'loyalty_activity_entries_earning_rate_snapshot',
+      sql`earning_rate_hundredths IS NULL OR (activity_type = 'points' AND earning_rate_hundredths > 0)`,
     ),
     reversesEntryFk: foreignKey({
       columns: [table.reversesEntryId],

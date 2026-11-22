@@ -13,7 +13,7 @@ export interface BalanceResult {
 export interface TransactionHistoryItem {
   id: string;
   occurredAt: string;
-  category: 'purchase' | 'manual_adjustment' | 'reversal';
+  category: 'purchase' | 'manual_adjustment' | 'reversal' | 'redemption';
   stampsDelta: number;
   pointsDelta: number;
   stampsBalance: number;
@@ -177,7 +177,7 @@ export class CustomerBalanceService {
           transactionsMap.set(tx.transactionId, {
             id: tx.transactionId,
             occurredAt: tx.occurredAt,
-            category: tx.category as 'purchase' | 'manual_adjustment' | 'reversal',
+            category: tx.category as TransactionHistoryItem['category'],
             stampsDelta,
             pointsDelta,
             stampsBalance: runningStamps,

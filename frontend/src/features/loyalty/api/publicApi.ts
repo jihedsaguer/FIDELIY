@@ -92,6 +92,7 @@ export interface PublicJoinBusinessResponse {
   customer: PublicCustomer;
   membership: PublicMembership;
   personalQrCredential?: string;
+  personalQrShortCode?: string;
   session: PublicSession;
 }
 

@@ -1,9 +1,10 @@
 import type { ProgramDto, EnhancedProgramConfigurationRequest } from '../api/programApi';
-import { StampProgress, PointsProgress, getProgramTypeLabel } from '../../loyalty/components';
+import { StampProgress, PointsProgress, getProgramTypeLabel, type TranslateFunction } from '../../loyalty/components';
 
 interface LoyaltyCardPreviewProps {
   programme: ProgramDto | EnhancedProgramConfigurationRequest;
   showCustomerView?: boolean;
+  t?: TranslateFunction;
 }
 
 /**
@@ -11,7 +12,7 @@ interface LoyaltyCardPreviewProps {
  * Matches the design used in CustomerDashboardPage
  * Uses shared StampProgress and PointsProgress components for consistency.
  */
-export function LoyaltyCardPreview({ programme }: LoyaltyCardPreviewProps) {
+export function LoyaltyCardPreview({ programme, t }: LoyaltyCardPreviewProps) {
   const isStamps = programme.type === 'stamps';
   const isPoints = programme.type === 'points';
   const isBoth = programme.type === 'both';
@@ -19,8 +20,8 @@ export function LoyaltyCardPreview({ programme }: LoyaltyCardPreviewProps) {
   // Extract configuration from programme
   let stampThreshold = 10;
   let pointsThreshold = 100;
-  let stampRewardName = 'Reward';
-  let pointsRewardName = 'Reward';
+  let stampRewardName = t ? t('reward') : 'Reward';
+  let pointsRewardName = t ? t('reward') : 'Reward';
   
   if ('config' in programme) {
     // EnhancedProgramConfigurationRequest structure
@@ -39,10 +40,10 @@ export function LoyaltyCardPreview({ programme }: LoyaltyCardPreviewProps) {
   const sampleStampsEarned = isStamps || isBoth ? Math.floor(stampThreshold / 2) : 0;
   const samplePointsEarned = isPoints || isBoth ? Math.floor(pointsThreshold / 2) : 0;
 
-  const programmeLabel = getProgramTypeLabel(programme.type);
+  const programmeLabel = getProgramTypeLabel(programme.type, t);
   
   // Get programme name and description safely
-  const programmeName = 'name' in programme ? (programme as { name: string | null }).name || 'Programme' : 'Programme';
+  const programmeName = 'name' in programme ? (programme as { name: string | null }).name || (t ? t('programme') : 'Programme') : (t ? t('programme') : 'Programme');
   const programmeDescription = 'description' in programme ? (programme as { description: string | null }).description || '' : '';
   const programmeVersion = 'version' in programme ? (programme as { version: number }).version : 1;
 
@@ -50,7 +51,7 @@ export function LoyaltyCardPreview({ programme }: LoyaltyCardPreviewProps) {
     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-4">
       <div className="text-center mb-4">
         <p className="text-sm font-semibold text-[var(--text)]">
-          Customer View Preview
+          {t ? t('customerViewPreview') : 'Customer View Preview'}
         </p>
       </div>
       

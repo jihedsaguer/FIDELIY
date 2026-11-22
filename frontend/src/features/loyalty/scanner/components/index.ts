@@ -14,21 +14,16 @@ export type { ScannerErrorStateProps } from '../types';
 export { CustomerScanResult, CustomerNotFound } from './CustomerScanResult';
 export type { CustomerScanResultProps, CustomerNotFoundProps } from './CustomerScanResult';
 
-export { CalculateEarningsStep } from './CalculateEarningsStep';
-export type { CalculateEarningsStepProps } from '../types';
-
-export { ConfirmTransactionStep } from './ConfirmTransactionStep';
-export type { ConfirmTransactionStepProps } from '../types';
-
-export { TransactionCompleteStep } from './TransactionCompleteStep';
-export type { TransactionCompleteStepProps } from '../types';
-
 export { ConfirmRedemptionStep } from './ConfirmRedemptionStep';
 export type { ConfirmRedemptionStepProps } from '../types';
 
 export { RedemptionCompleteStep } from './RedemptionCompleteStep';
 export type { RedemptionCompleteStepProps } from '../types';
 
+export { BranchPicker } from './BranchPicker';
+export { CustomerHistory } from './CustomerHistory';
+export { CancelLastTransaction, findLastReversible } from './CancelLastTransaction';
+export { ReverseTransactionDialog } from './ReverseTransactionDialog';
 
 export { RegistrationFormModal } from './RegistrationFormModal';
 export type { RegistrationFormModalProps } from './RegistrationFormModal';

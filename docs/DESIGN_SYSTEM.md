@@ -1,354 +1,91 @@
 # FIDELIY Design System
 
-## Overview
-
-This document outlines the design system for FIDELIY, inspired by Apple's design principles and Figma's component organization. It provides guidelines for creating consistent, accessible, and maintainable UI components.
-
-## Design Principles
-
-### 1. Clarity
-- **Purpose**: Every element should have a clear purpose and function
-- **Simplicity**: Remove unnecessary complexity; favor straightforward solutions
-- **Legibility**: Text should be readable at all sizes and distances
-
-### 2. Consistency
-- **Visual**: Use the same styles, colors, and spacing throughout
-- **Behavioral**: Components should behave predictably
-- **Terminal**: Follow platform conventions (web, iOS, Android)
-
-### 3. Accessibility
-- **Inclusive**: Design for all users, including those with disabilities
-- **Keyboard Navigation**: All interactive elements must be keyboard accessible
-- **Color Contrast**: Maintain WCAG 2.1 AA contrast ratios (4.5:1 for normal text)
-
-### 4. Feedback
-- **Visual**: Provide clear visual feedback for user actions
-- **Tactile**: Ensure touch targets are appropriately sized
-- **Responsive**: Interfaces should respond to user input without delay
-
-## Color Palette
-
-### Primary Colors
-- **Orange (Primary Brand)**: `#F85804` - Used for primary actions, accents, and highlights
-- **Orange Light**: `#ff7a22` - Hover states
-- **Orange Dark**: `#e04a00` - Active states
-
-### Secondary Colors
-- **Green (Secondary Brand)**: `#2f7450` - Used for success states and secondary actions
-- **Green Light**: `#5da77c`
-- **Green Dark**: `#265f41`
-
-### Neutral Colors
-- **Background**: `#F0E8E0` - Warm beige/off-white primary background
-- **Surface**: `#FFFFFF` - Card and elevated surface backgrounds
-- **Charcoal**: `#101010` - Primary text color
-- **Text Secondary**: `#4a4a4a`
-- **Text Muted**: `#6b7280`
-
-### Semantic Colors
-- **Success**: `#10b981` - Positive actions and states
-- **Warning**: `#f59e0b` - Cautionary states
-- **Danger**: `#ef4444` - Errors and destructive actions
-- **Info**: `#3b82f6` - Informational messages
-
-## Typography
-
-### Font Family
-- **Primary**: `Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif`
-- **Monospace**: `ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`
-
-### Font Sizes
-| Size | Value | Use Case |
-|------|-------|----------|
-| xs | 0.75rem (12px) | Captions, labels |
-| sm | 0.875rem (14px) | Secondary text, table cells |
-| base | 1rem (16px) | Body text |
-| lg | 1.125rem (18px) | Subheadings |
-| xl | 1.25rem (20px) | Headings |
-| 2xl | 1.5rem (24px) | Page titles |
-| 3xl | 1.875rem (30px) | Section titles |
-| 4xl | 2.25rem (36px) | Hero titles |
-
-### Font Weights
-| Weight | Value | Use Case |
-|--------|-------|----------|
-| Normal | 400 | Body text |
-| Medium | 500 | Emphasis |
-| Semibold | 600 | Buttons, labels |
-| Bold | 700 | Headings |
-| Black | 800 | Important headings |
-
-### Line Heights
-| Name | Value | Use Case |
-|------|-------|----------|
-| Tight | 1.25 | Headings |
-| Normal | 1.5 | Body text |
-| Relaxed | 1.625 | Long-form content |
-
-## Spacing
-
-We use a consistent spacing scale based on powers of 2 (4px base unit):
-
-| Size | Value | Use Case |
-|------|-------|----------|
-| 1 | 0.25rem (4px) | Tiny spacing |
-| 2 | 0.5rem (8px) | Small spacing |
-| 3 | 0.75rem (12px) | Medium-small spacing |
-| 4 | 1rem (16px) | Standard spacing |
-| 5 | 1.25rem (20px) | Large spacing |
-| 6 | 1.5rem (24px) | Extra-large spacing |
-| 8 | 2rem (32px) | Section spacing |
-| 10 | 2.5rem (40px) | Large section spacing |
-| 12 | 3rem (48px) | Extra-large section spacing |
-| 16 | 4rem (64px) | Page section spacing |
-
-## Border Radius
-
-| Size | Value | Use Case |
-|------|-------|----------|
-| none | 0 | No rounding |
-| sm | 0.375rem (6px) | Small cards, buttons |
-| md | 0.5rem (8px) | Standard cards, inputs |
-| lg | 0.75rem (12px) | Large cards, modals |
-| xl | 1rem (16px) | Extra-large cards |
-| full | 9999px | Pills, avatars |
-
-## Shadows
-
-| Size | Value | Use Case |
-|------|-------|----------|
-| none | 0 | No shadow |
-| sm | 0 1px 2px rgba(0,0,0,0.05) | Subtle depth |
-| md | 0 4px 6px -1px rgba(0,0,0,0.1) | Cards |
-| lg | 0 10px 15px -3px rgba(0,0,0,0.1) | Modals |
-| primary-sm | 0 2px 8px rgba(248,88,4,0.08) | Orange-tinted shadow |
-| primary-md | 0 4px 12px rgba(248,88,4,0.15) | Orange-tinted shadow |
-
-## Component Organization
-
-### Structure
-```
-frontend/
-├── src/
-│   ├── components/
-│   │   └── layout/          # Layout components (Sidebar, AppLayout)
-│   ├── shared/
-│   │   ├── ui/             # Reusable UI components (Button, Card, Input)
-│   │   └── hooks/          # Custom React hooks
-│   └── features/
-│       └── merchant/       # Feature-specific components
-│           ├── dashboard/
-│           │   └── components/  # Dashboard-specific components
-│           └── programs/
-│               └── components/  # Program-specific components
-└── docs/
-    └── DESIGN_SYSTEM.md    # This document
-```
-
-### Naming Conventions
-- **PascalCase**: All component files and folder names
-- **Descriptive**: Names should clearly describe the component's purpose
-- **Prefix**: Use feature prefix for feature-specific components (e.g., `MerchantDashboardCard`)
-
-## Component Library (shadcn/ui)
-
-We use [shadcn/ui](https://ui.shadcn.com/) as our component library. This provides:
-
-1. **Pre-built, accessible components** that follow best practices
-2. **Copy-paste components** that you own and can customize
-3. **Tailwind CSS** integration for utility-first styling
-4. **TypeScript** support out of the box
-
-### Available Components
-
-#### Layout
-- `Card` - Container for content
-- `Button` - Interactive buttons
-- `Input` - Form inputs
-- `Label` - Form labels
-- `Badge` - Status indicators
-
-#### Adding New Components
-To add a new shadcn component:
-
-1. Visit [ui.shadcn.com](https://ui.shadcn.com/docs/components)
-2. Find the component you need
-3. Copy the component code
-4. Save it in `src/components/ui/`
-5. Export it from `src/components/ui/index.ts`
-
-## Layout System
-
-### Sidebar
-- **Width**: 240px (expanded), 64px (collapsed)
-- **Background**: White
-- **Border**: 1px solid #e5e7eb (border color)
-- **Z-index**: 300 (above most content)
-
-### Main Content
-- **Margin-left**: Matches sidebar width
-- **Max-width**: 1120px
-- **Padding**: 1.5rem (24px)
-
-### Responsive Breakpoints
-- **Mobile**: < 480px - Sidebar hidden, bottom navigation visible
-- **Tablet**: < 768px - Sidebar condensed
-- **Desktop**: >= 768px - Full sidebar
-
-## Design Patterns
-
-### 1. Cards
-Cards are used to group related content and actions.
-
-```tsx
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
-
-<Card>
-  <CardHeader>
-    <CardTitle>Card Title</CardTitle>
-  </CardHeader>
-  <CardContent>
-    Card content goes here
-  </CardContent>
-  <CardFooter>
-    Actions
-  </CardFooter>
-</Card>
-```
-
-### 2. Forms
-Forms should be structured with proper labels and validation.
-
-```tsx
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
-
-<div className="space-y-4">
-  <div className="space-y-2">
-    <Label htmlFor="name">Name</Label>
-    <Input id="name" placeholder="Enter your name" />
-  </div>
-  <Button type="submit">Submit</Button>
-</div>
-```
-
-### 3. Lists
-Lists should use consistent spacing and alignment.
-
-```tsx
-import { Card } from '@/components/ui/card'
-
-<div className="space-y-4">
-  {items.map((item) => (
-    <Card key={item.id}>
-      <div className="p-4">
-        <h3 className="font-semibold">{item.name}</h3>
-        <p className="text-sm text-muted-foreground">{item.description}</p>
-      </div>
-    </Card>
-  ))}
-</div>
-```
-
-### 4. Status Badges
-Use badges to indicate status consistently.
-
-```tsx
-import { Badge } from '@/components/ui/badge'
-
-<Badge variant="success">Active</Badge>
-<Badge variant="warning">Pending</Badge>
-<Badge variant="destructive">Inactive</Badge>
-<Badge variant="outline">Draft</Badge>
-```
-
-## Accessibility Guidelines
-
-### 1. Focus Management
-- All interactive elements must be focusable
-- Use `focus-visible` for focus styles
-- Maintain logical tab order
-
-### 2. ARIA Labels
-- Use `aria-label` for icon-only buttons
-- Use `aria-expanded` for collapsible elements
-- Use `aria-live` for dynamic content updates
-
-### 3. Color Contrast
-- Normal text: Minimum 4.5:1 contrast ratio
-- Large text: Minimum 3:1 contrast ratio
-- UI components: Minimum 3:1 contrast ratio
-
-### 4. Touch Targets
-- Minimum 44x44px for touch targets
-- Provide adequate spacing between interactive elements
-
-## Best Practices
-
-### 1. Component Composition
-- **Favor composition over inheritance**: Build components that can be composed
-- **Single Responsibility**: Each component should do one thing well
-- **Reusability**: Design components to be reusable in different contexts
-
-### 2. Props
-- **Explicit over implicit**: Make component behavior predictable
-- **Default values**: Provide sensible defaults
-- **Type safety**: Use TypeScript for all component props
-
-### 3. Styling
-- **Utility-first**: Use Tailwind's utility classes when possible
-- **Custom CSS**: Only when utility classes are insufficient
-- **Consistent naming**: Use consistent class naming conventions
-
-### 4. Performance
-- **Lazy loading**: Use `React.lazy` for large components
-- **Memoization**: Use `React.memo` for pure components
-- **Code splitting**: Split large bundles for better performance
-
-### 5. Testing
-- **Component tests**: Test component rendering and behavior
-- **Accessibility tests**: Use axe-core for accessibility testing
-- **Visual regression**: Consider visual regression testing for critical components
-
-## Examples from Industry Leaders
-
-### Apple Design Principles
-1. **Deference**: The UI should defer to the content
-2. **Clarity**: Text should be legible at every size
-3. **Consistency**: Use consistent terminology and appearance
-
-### Figma Component Organization
-1. **Atomic Design**: Break UI into atoms, molecules, organisms
-2. **Variants**: Create component variants for different states
-3. **Auto Layout**: Use auto layout for consistent spacing
-4. **Constraints**: Use constraints for responsive behavior
-
-### Stripe Design System
-1. **Element System**: Consistent primitives
-2. **Component System**: Reusable components
-3. **Pattern Library**: Common UI patterns
-4. **Brand Guidelines**: Visual identity
-
-## Resources
-
-- [Apple Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines/)
-- [Figma Design Systems](https://www.figma.com/community/training/design-systems)
-- [Stripe Design System](https://stripe.com/atlas/guides/design-systems)
-- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
-- [shadcn/ui Documentation](https://ui.shadcn.com/docs)
-- [WCAG 2.1 Guidelines](https://www.w3.org/WAI/WCAG21/quickref/)
-
-## Contributing
-
-When contributing to the design system:
-
-1. **Follow existing patterns**: Look for similar components and follow their structure
-2. **Document decisions**: Add comments explaining non-obvious decisions
-3. **Request review**: Get design and code review for new components
-4. **Test thoroughly**: Ensure components work in all contexts and are accessible
-5. **Update documentation**: Keep this document up to date
-
-## Version History
-
-- **v1.0.0** (2024-11-17): Initial design system documentation
+Verified against the frontend source on 2026-11-21. Ground UI work in this document and the code it cites; do not invent tokens, components, patterns or copy. If a value is missing, flag it as undefined and ask.
+
+## 1. Product direction
+
+- **Users:** merchant owner (operational UI: direct, compact, task-led) and customer (loyalty wallet: clear, premium). Smartphone-first, desktop secondary. Source: `docs/PRODUCT.md`.
+- **Voice:** concise task labels, factual state messages, clear recovery guidance with a retry. No decorative dashboard copy, fake metrics, or claims about earning, balances, rewards or history that the backend does not support. Square POS / Shopify POS and Starbucks Rewards are interaction-quality references only, not templates.
+- **Not in Release 1:** native apps, NFC, POS integration, payments, analytics (`docs/PRODUCT.md`).
+- **Unresolved:** formal brand voice; supported browser/device matrix; offline behaviour; whether user research defines an action-count budget. Product targets (dashboard load < 1 s, transactions < 500 ms) are not verified frontend budgets.
+
+## 2. Stack and where styles live
+
+React 19, Vite, TypeScript, Tailwind CSS 4 (`@tailwindcss/vite`, `frontend/tailwind.config.mjs`), Redux Toolkit with RTK Query (`services/api/baseApi.ts`, cookie credentials, `/api` proxy). shadcn/ui is not used (DECISIONS #17).
+
+- `frontend/src/styles/design-tokens.css`: CSS custom properties (tokens). Authoritative values.
+- `frontend/src/styles/globals.css`: imported by `main.tsx`. Base element defaults live in `@layer base` so Tailwind utilities can override them. It also contains legacy global classes (`.btn-*`, `.card`, `.form-stack`, `.sidebar-nav`, ...).
+- `frontend/src/styles/global.css` (singular): not imported by any source file; stale.
+- Components consume tokens as `var(--token)` inside Tailwind utilities. Merge classes with `cn` (`frontend/src/lib/utils.ts`).
+
+## 3. Tokens (`design-tokens.css`)
+
+| Role | Tokens |
+|---|---|
+| Brand | `--brand #f97316`, `--brand-dark #ea580c`, `--brand-light #fcd34d`, scale `--brand-50`..`--brand-900` |
+| Surfaces | `--background #f7f8f6`, `--surface #fff`, `--surface-elevated`, `--subtle #f1f5f1` |
+| Text | `--text #17231f`, `--text-muted #4a5250`, `--text-subtle #6b7280` |
+| Borders | `--border #dfe7e1`, `--border-strong #cdd3cd`, `--divider` |
+| Semantic | `--success #265f41`, `--warning #f59e0b`, `--danger #8e3f36`, `--info #0284c7`, each with `-light` and `-subtle` variants |
+| Type | `--font-sans` Inter stack; `--text-xs`..`--text-6xl` (12px..60px); weights 300..900; leading tight 1.25 / normal 1.5 / relaxed 1.625 |
+| Spacing | `--space-1`..`--space-40` on a 4px base (4, 8, 12, 16, 20, 24, 28, 32, ...) |
+| Radius | `--radius-sm 6px`, `md 8px`, `lg 12px`, `xl 16px`, `2xl`, `3xl`, `full` |
+| Shadow | `--shadow-sm`..`xl`, `--shadow-brand-sm`..`lg` |
+| Layering | dropdown 100, sticky 200, fixed 300, modal-backdrop 400, modal 500, popover 600, tooltip 700, toast 1000 |
+| Motion | `--transition-fast 150ms`, `normal 200ms`, `slow 300ms`; reduced motion is honoured in `globals.css` |
+
+`design-tokens.css` also defines dark-theme values; whether the application applies them is not verified. Heading and body fonts are not imported by the stylesheet, so Inter renders only if installed on the device.
+
+## 3a. Component primitives (`frontend/src/components/ui`)
+
+Reuse these before creating anything new: `Button` (variants primary, secondary, accent, ghost, outline, destructive; sizes sm 36 / md 44 / lg 48 px min height; `isLoading`), `Badge` (default, primary, secondary, success, warning, danger, info, brand; optional dot), `Card` (+ `CardHeader`, `CardContent`, `CardFooter`; variants default, glass, bordered, elevated), `Input` and `InputField`, `SelectField`, `Section`, `FormFeedback`, `SubmitButton`, `LoadingPanel`, `InfoCard`, `BranchCard`, `Modal`, `ConfirmDialog`, `Accordion` + `AccordionItem`. The barrel `components/ui/index.ts` exports only a subset (including `Modal`, `ConfirmDialog`, `Accordion`); import the others by path.
+
+- **Modal:** `--z-modal`; the panel has `role="dialog"` (or `alertdialog`), `aria-modal` and a unique `useId` title id; localized close button (`t('close')`, 44px, logical classes). Below `sm` it is a bottom sheet up to `100dvh` whose body scrolls internally. Body scroll is locked while any dialog is open; focus moves into the dialog (first focusable element or `initialFocusRef`), Tab is trapped and focus returns to the opener on close; only the top-most dialog reacts to Escape. The behaviour lives in `useDialogLayer.ts`.
+- **ConfirmDialog:** built on `Modal` as an `alertdialog` (title, message, confirm label, default cancel label `t('cancel')`, `variant="destructive"`, `isPending`, optional `errorMessage`). The destructive variant focuses Cancel first; while pending, neither action nor Escape/overlay dismisses it.
+- **Accordion:** `Accordion` (group; items are independent) and `AccordionItem` (`title`, `defaultOpen`, `headingLevel`): a native button inside a heading, with `aria-expanded`/`aria-controls`, toggles a labelled `region`; Enter/Space come from the native button.
+- **QR rendering:** `features/customer/components/QRCodeDisplay.tsx` uses the bundled `qrcode.react` canvas (no CDN); the forwarded canvas ref allows PNG export. Layouts: `components/layout/{AppLayout,PublicLayout,Sidebar}.tsx`.
+
+## 4. Layout and navigation (merchant workspace)
+
+- Below 768px: bottom navigation (Home, Programmes, Scan which opens the scanner modal, More). The sidebar renders nothing.
+- 768-1023px: sidebar fixed collapsed at 64px (`w-16`), content offset `md:ml-16`.
+- 1024px and up: sidebar 256px (`w-64`), content offset `lg:ml-64`.
+- The page is wrapped in `<main id="main-content">` by `AppLayout`; pages must not nest another `<main>`.
+- Modals must stack above the bottom nav (`--z-modal`).
+- Content width is capped near 1120px in the public and app shells.
+
+Source: `AppLayout.tsx`, `Sidebar.tsx`, `docs/IMPLEMENTATION_STATUS.md`. Browser-verified on 2026-11-21 with mocked API at 390, 820 and 1280px; physical-device safe-area insets are not verified.
+
+## 5. Localization and RTL
+
+- Locales: `fr` (default) and `ar` (`Locale = 'fr' | 'ar'` in `shared/i18n/i18n.tsx`), persisted in browser storage; `document.documentElement.dir` is `rtl` for Arabic.
+- All user-visible strings come from `useI18n()` message keys; add every new key in both languages. Money formatting uses `formatTnd` (locale `fr-TN` / `ar-TN`).
+- Use logical Tailwind properties (`ms-`, `me-`, `ps-`, `pe-`, `text-start`) rather than left/right; check mirrored layouts in Arabic.
+
+## 6. Interaction patterns (verified behaviour)
+
+- **Forms:** validate on submit; inputs use native `required`, type and autocomplete attributes. Form-level errors and notices use `FormFeedback` (`role="alert"` for errors, `role="status"` for notices). Clear feedback when a field changes or before a new submit.
+- **Pending actions:** disable the control and show a task-specific waiting label (`SubmitButton`, `Button isLoading`).
+- **Loading and errors:** session and route restoration use `LoadingPanel`; failures state what failed and offer "Try again" (refetch) or sign-in recovery.
+- **Destructive actions:** confirm with `ConfirmDialog` (`variant="destructive"`): the title asks the action as a question, the message states the consequence (e.g. the previous QR stops working; a reversal is final, `DECISIONS` #15), the confirm label repeats the action, Cancel is focused first, and on failure the dialog stays open with an error and a retryable confirm. Approved for personal-QR rotation (implemented), programme deactivation and reversal (later slices). Sign-out still executes directly.
+- **Optimistic updates, polling, skeletons, toasts, offline handling:** none verified.
+- **Focus and keyboard:** native controls and DOM tab order; `:focus-visible` shows an orange ring; `Button` uses a ring utility. A skip link exists on the customer dashboard only. Touch targets are at least 44px.
+- **Accessibility target:** WCAG 2.2 AA (`docs/ROADMAP.md` records the contrast fix and a11y tests). `frontend/src/test-utils/a11y-audit.test.ts` documents manual checks; `@axe-core/playwright` is a dev dependency.
+
+## 7. Vocabulary and copy
+
+Copy is action-led and short. Use existing message keys and wording before adding new labels; when a new action, state or label is needed, add it to `i18n.tsx` in French and Arabic and keep the same name for the same action across surfaces. Recurring patterns: direct task label (verb + object), recovery error followed by a retry action, progress confirmation ("saved", "you can return any time"), session-recovery message. Surfaces follow `frontend/src/app/routes/paths.ts` (`/customer/*`, `/merchant/*`, `/qr/:qrId`). Customer sign-in is phone-only without OTP in Release 1 (`DECISIONS` #16), so do not write copy that promises a verification code.
+
+## 8. Process for new UI
+
+1. Clarify the job, the required system state, what happens on failure, and what success looks like.
+2. List every state the screen needs (default, loading, empty, error, success, edge cases) using real data shapes and real tokens. For a substantial new screen, share a reviewable description or rendered mock before building; do not add a permanent Markdown file unless asked.
+3. Confirm with the user, then spec, plan and implement, reusing `components/ui` and the closest sibling page.
+4. Verify narrowly: `npx tsc --noEmit` and `npx vitest run <file>` in `frontend/`, then a browser check at mobile, tablet and desktop widths in French and Arabic when layout changed.
+
+## 9. Known gaps
+
+- Two styling mechanisms coexist: legacy global classes in `globals.css` and Tailwind utilities in components; prefer the components.
+- `globals.css` contains an obsolete "shadcn/ui Layer Configuration" comment block and a 240px `.sidebar-nav` legacy layout that the merchant `AppLayout` does not use.
+- `styles/global.css` is unused.
+- Formal type scale, dark-mode behaviour and a destructive-action pattern are undecided.

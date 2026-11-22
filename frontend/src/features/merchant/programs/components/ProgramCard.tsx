@@ -1,7 +1,7 @@
 import type { ProgramDto } from '../../api/programApi';
 import { ProgramTypeIcon } from './ProgramTypeIcon';
 import { ProgramStatusBadge } from './ProgramStatusBadge';
-import { formatProgramType } from './programUtils';
+import { formatProgramType, type TranslateFunction } from './programUtils';
 
 interface ProgramCardProps {
   program: ProgramDto;
@@ -9,6 +9,7 @@ interface ProgramCardProps {
   showActions?: boolean;
   onDeactivate?: (program: ProgramDto) => void;
   isDeactivating?: boolean;
+  t: TranslateFunction;
 }
 
 /**
@@ -25,7 +26,8 @@ export function ProgramCard({
   isFeatured = false, 
   showActions = false,
   onDeactivate,
-  isDeactivating = false 
+  isDeactivating = false,
+  t
 }: ProgramCardProps) {
   const cardClass = `program-card${isFeatured ? ' program-card--featured' : ''}`;
 
@@ -36,14 +38,14 @@ export function ProgramCard({
           <ProgramTypeIcon type={program.type} />
         </div>
         <div className="program-card-info">
-          <h3 className="program-card-name" title={program.name ?? 'Unnamed Programme'}>
-            {program.name ?? 'Unnamed Programme'}
+          <h3 className="program-card-name" title={program.name ?? t('unnamedProgramme')}>
+            {program.name ?? t('unnamedProgramme')}
           </h3>
           <div className="program-card-meta">
             <ProgramStatusBadge status={program.status} />
             <span className="program-card-version">v{program.version}</span>
             <span className="program-card-type">
-              {formatProgramType(program.type)}
+              {formatProgramType(program.type, t)}
             </span>
           </div>
         </div>
@@ -59,9 +61,9 @@ export function ProgramCard({
             className="quiet-button"
             onClick={() => onDeactivate(program)}
             disabled={isDeactivating}
-            aria-label={`Deactivate programme ${program.name ?? 'this programme'}`}
+            aria-label={`${t('deactivateProgramme')} ${program.name ?? t('thisProgramme')}`}
           >
-            {isDeactivating ? 'Deactivating...' : 'Deactivate Programme'}
+            {isDeactivating ? t('deactivating') : t('deactivateProgramme')}
           </button>
         </div>
       )}

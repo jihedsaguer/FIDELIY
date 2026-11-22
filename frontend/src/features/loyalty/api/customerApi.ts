@@ -4,22 +4,32 @@ import { baseApi } from '../../../services/api/baseApi';
  * Customer loyalty API types
  */
 
+export type LoyaltyProgramType = 'stamps' | 'points' | 'both';
+
+/** One redeemable reward of the active programme (cost in stamps or points). */
+export interface MembershipReward {
+  name: string;
+  activityType: 'stamps' | 'points';
+  cost: number;
+}
+
+/**
+ * Item of GET /customers/memberships and body of GET /customers/memberships/:id
+ * (the detail adds `lifecycle`). Matches customer-membership.service.ts.
+ */
 export interface CustomerMembership {
   id: string;
-  businessId: string;
-  businessName: string;
-  logoUrl: string | null;
   status: 'active' | 'inactive';
   joinedAt: string;
-  balance: {
-    stamps: number;
-    points: number;
-  };
-  programType: 'stamps' | 'points' | 'both' | null;
+  leftAt: string | null;
+  business: { name: string; logoUrl: string | null };
+  program: { type: LoyaltyProgramType; version: number } | null;
+  balance: { stamps: number; points: number };
+  rewards: MembershipReward[];
 }
 
 export interface MembershipDetail extends CustomerMembership {
-  // Additional detail fields can be added here
+  lifecycle?: Array<{ type: 'joined' | 'left'; occurredAt: string }>;
 }
 
 export interface TransactionHistoryItem {
@@ -43,8 +53,27 @@ export interface RewardInfo {
   available: boolean;
 }
 
-export interface PersonalQrCredential {
-  credential?: string;
+/**
+ * GET /customers/personal-qr: the current credential and short ID (404 when none is issued).
+ * `credential` and `shortCode` are null with `requiresRotation: true` for a legacy credential
+ * that cannot be displayed; the customer must rotate it once. Keep the values in memory only.
+ */
+export interface PersonalQrStatus {
+  issuedAt: string;
+  active: boolean;
+  credential: string | null;
+  shortCode: string | null;
+  requiresRotation?: boolean;
+}
+
+/**
+ * POST /customers/personal-qr (409 if one is active) and POST /customers/personal-qr/rotate.
+ * `shortCode` (XXXXX-XXXXX) is what a merchant types when scanning fails.
+ */
+export interface PersonalQrIssued {
+  credential: string;
+  shortCode: string | null;
+  issuedAt: string;
 }
 
 /**
@@ -90,9 +119,9 @@ export const customerApi = baseApi.injectEndpoints({
     }),
 
     /**
-     * Get personal QR credential
+     * Get the current personal QR credential and short ID
      */
-    getPersonalQr: builder.query<PersonalQrCredential, void>({
+    getPersonalQr: builder.query<PersonalQrStatus, void>({
       query: () => '/customers/personal-qr',
       providesTags: ['CustomerProfile'],
     }),
@@ -100,7 +129,7 @@ export const customerApi = baseApi.injectEndpoints({
     /**
      * Issue personal QR credential
      */
-    issuePersonalQr: builder.mutation<PersonalQrCredential, void>({
+    issuePersonalQr: builder.mutation<PersonalQrIssued, void>({
       query: () => ({
         url: '/customers/personal-qr',
         method: 'POST',
@@ -111,7 +140,7 @@ export const customerApi = baseApi.injectEndpoints({
     /**
      * Rotate personal QR credential
      */
-    rotatePersonalQr: builder.mutation<PersonalQrCredential, void>({
+    rotatePersonalQr: builder.mutation<PersonalQrIssued, void>({
       query: () => ({
         url: '/customers/personal-qr/rotate',
         method: 'POST',

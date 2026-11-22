@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { paths } from '@/app/routes/paths';
 import { useScanner } from '@/features/loyalty/context/ScannerContext';
 import { useGetBusinessSetupQuery } from '@/features/business-onboarding/api/businessOnboardingApi';
@@ -6,8 +6,8 @@ import { useGetCurrentProgramQuery } from '@/features/merchant/api/programApi';
 import { useListBranchesQuery } from '@/features/merchant/api/branchApi';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useI18n } from '@/shared/i18n/i18n';
-import { QrCode, ChevronDown, Store } from 'lucide-react';
-import { Button, Card } from '@/components/ui';
+import { QrCode, Store } from 'lucide-react';
+import { Button, Card, FormFeedback } from '@/components/ui';
 import {
   BusinessOverview,
   BranchOverview,
@@ -16,9 +16,15 @@ import {
 } from '../dashboard/components';
 import type { BusinessSetupResponse } from '@/features/business-onboarding/api/businessOnboardingApi';
 
+/**
+ * MerchantDashboardPage - Modernized merchant home screen
+ * - Scan-first workflow with prominent scanner access
+ * - Business/branch context display
+ * - Programme summary
+ * - Uses shadcn/ui components and design tokens
+ */
 export default function MerchantDashboardPage() {
   const { t } = useI18n();
-  const navigate = useNavigate();
   const { session } = useAuth();
   const setupQuery = useGetBusinessSetupQuery();
   const programQuery = useGetCurrentProgramQuery();
@@ -35,35 +41,48 @@ export default function MerchantDashboardPage() {
 
   if (isLoading) {
     return (
-      <main className="flex-1 bg-[var(--surface)] p-4 md:p-8">
+      <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
         <div className="mx-auto max-w-4xl w-full space-y-6">
-          <div className="h-12 w-full bg-[var(--subtle)] rounded-lg animate-pulse" />
-          <div className="h-48 w-full bg-[var(--subtle)] rounded-lg animate-pulse" />
-          <div className="h-32 w-full bg-[var(--subtle)] rounded-lg animate-pulse" />
+          <div className="h-12 w-full bg-[var(--subtle)] rounded-[var(--radius-lg)] animate-pulse" />
+          <div className="h-48 w-full bg-[var(--subtle)] rounded-[var(--radius-lg)] animate-pulse" />
+          <div className="h-32 w-full bg-[var(--subtle)] rounded-[var(--radius-lg)] animate-pulse" />
         </div>
-      </main>
+      </div>
+    );
+  }
+
+  if (setupQuery.isError) {
+    return (
+      <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
+        <div className="mx-auto max-w-4xl w-full space-y-4">
+          <FormFeedback error={t('failedToLoad')} />
+          <Button variant="outline" onClick={() => setupQuery.refetch()}>
+            {t('tryAgain')}
+          </Button>
+        </div>
+      </div>
     );
   }
 
   if (!business) {
     return (
-      <main className="flex-1 bg-[var(--surface)] p-4 md:p-8">
+      <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
         <div className="mx-auto max-w-4xl w-full">
           <NoBusinessSetup />
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="flex-1 bg-[var(--surface)] p-4 md:p-8">
+    <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
       <div className="mx-auto max-w-4xl w-full space-y-6">
         {/* Primary Scan Action - Dominant and immediately visible */}
         <Card className="p-6 md:p-8">
           <div className="flex flex-col md:flex-row md:items-center gap-4">
             <div className="flex-1">
               <h2 className="text-[var(--text)] text-xl md:text-2xl font-semibold">
-                {t('welcome')}, {session?.user.name}
+                {session?.user.name ? `${t('welcome')}, ${session.user.name}` : t('welcome')}
               </h2>
               <p className="text-[var(--text-muted)] mt-1">
                 {t('merchantWorkspace')}
@@ -71,7 +90,7 @@ export default function MerchantDashboardPage() {
             </div>
             <Button
               onClick={() => openScanner()}
-              className="flex-shrink-0 gap-2 bg-[var(--brand)] hover:bg-[var(--brand-strong)] text-white"
+              className="flex-shrink-0 gap-2"
               size="lg"
             >
               <QrCode className="w-5 h-5" />
@@ -92,13 +111,12 @@ export default function MerchantDashboardPage() {
                 </div>
               </div>
               {branches.length > 1 && (
-                <button
-                  onClick={() => navigate(paths.merchantBranches)}
-                  className="flex items-center gap-1 text-[var(--brand)] text-sm font-medium hover:underline"
+                <Link
+                  to={paths.merchantBranches}
+                  className="text-[var(--brand)] text-sm font-medium hover:underline rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
                 >
                   {t('manage')}
-                  <ChevronDown className="h-4 w-4" />
-                </button>
+                </Link>
               )}
             </div>
           </Card>
@@ -113,6 +131,6 @@ export default function MerchantDashboardPage() {
         {/* Branch Overview - Shows all branches */}
         <BranchOverview branches={branches} />
       </div>
-    </main>
+    </div>
   );
 }

@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Param,
   ParseUUIDPipe,
   Post,
@@ -104,18 +105,21 @@ export class CustomersController {
   }
 
   @Get('/personal-qr')
+  @Header('Cache-Control', 'no-store')
   @UseGuards(CustomerGuard)
   getPersonalQrCredential(@CurrentUser() user: CurrentUserPayload) {
     return this.customerMemberships.getPersonalQrCredential(user.id);
   }
 
   @Post('/personal-qr')
+  @Header('Cache-Control', 'no-store')
   @UseGuards(CustomerGuard)
   issuePersonalQrCredential(@CurrentUser() user: CurrentUserPayload) {
     return this.customerMemberships.issuePersonalQrCredential(user.id);
   }
 
   @Post('/personal-qr/rotate')
+  @Header('Cache-Control', 'no-store')
   @UseGuards(CustomerGuard)
   rotatePersonalQrCredential(@CurrentUser() user: CurrentUserPayload) {
     return this.customerMemberships.rotatePersonalQrCredential(user.id);

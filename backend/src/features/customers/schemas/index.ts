@@ -107,6 +107,8 @@ export const customerQrCredentials = pgTable(
     credentialHash: varchar('credential_hash', { length: 64 })
       .notNull()
       .unique(),
+    // SHA-256 of the normalised short ID; NULL for legacy random credentials.
+    shortCodeHash: varchar('short_code_hash', { length: 64 }),
     issuedAt: timestamp('issued_at').notNull().defaultNow(),
     revokedAt: timestamp('revoked_at'),
   },
@@ -116,5 +118,10 @@ export const customerQrCredentials = pgTable(
     )
       .on(table.customerAccountId)
       .where(sql`revoked_at IS NULL`),
+    activeShortCodeUnique: uniqueIndex(
+      'customer_qr_credentials_active_short_code_unique',
+    )
+      .on(table.shortCodeHash)
+      .where(sql`revoked_at IS NULL AND short_code_hash IS NOT NULL`),
   }),
 );

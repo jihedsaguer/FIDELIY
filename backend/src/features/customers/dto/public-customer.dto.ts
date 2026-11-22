@@ -130,6 +130,8 @@ export interface PublicJoinBusinessResponse {
     joinedAt: string;
   };
   personalQrCredential?: string;
+  /** Short ID (XXXXX-XXXXX) for manual entry, present with personalQrCredential. */
+  personalQrShortCode?: string;
   session: {
     token: string;
     expiresAt: string;

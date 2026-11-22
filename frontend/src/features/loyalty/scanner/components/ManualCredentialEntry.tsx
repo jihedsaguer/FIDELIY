@@ -26,6 +26,13 @@ export function ManualCredentialEntry({
 
   return (
     <Card className="p-4 bg-[var(--surface)]">
+      <form
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!isDisabled) onSubmit();
+        }}
+      >
       <div className="flex items-start gap-3">
         <QrCode className="w-5 h-5 text-[var(--text-muted)] mt-1 flex-shrink-0" />
         <div className="flex-1">
@@ -42,7 +49,7 @@ export function ManualCredentialEntry({
           />
           <Button 
             className="w-full"
-            onClick={onSubmit} 
+            type="submit"
             disabled={isDisabled}
             isLoading={isBusy}
           >
@@ -50,6 +57,7 @@ export function ManualCredentialEntry({
           </Button>
         </div>
       </div>
+      </form>
       {errorMessage && <FormFeedback error={errorMessage} />}
     </Card>
   );

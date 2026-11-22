@@ -2,8 +2,11 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { validateCustomerQrSecretForProduction } from './shared/security/customer-qr';
 
 async function bootstrap() {
+  // CUSTOMER_QR_SECRET is required in production (DECISIONS.md #20).
+  validateCustomerQrSecretForProduction();
   const app = await NestFactory.create(AppModule);
 
   // Set global API prefix

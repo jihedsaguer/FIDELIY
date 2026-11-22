@@ -59,4 +59,6 @@ export interface RegisterCustomerResponse {
     joinedAt: string;
   };
   personalQrCredential: string | undefined;
+  /** Short ID (XXXXX-XXXXX) for manual entry; same presence rule as personalQrCredential. */
+  personalQrShortCode?: string;
 }

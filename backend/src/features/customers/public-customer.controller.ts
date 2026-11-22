@@ -17,7 +17,7 @@ import { SignJWT } from 'jose';
 import { DatabaseService } from '../../database/database.service';
 import { AuthService } from '../auth/auth.service';
 import { PhoneAuthService } from '../auth/phone-auth.service';
-import { hashCustomerQrCredential } from '../../shared/security/customer-qr';
+import { deriveCustomerQrCodes } from '../../shared/security/customer-qr';
 import {
   PublicJoinBusinessDto,
   PublicCustomerLookupDto,
@@ -482,6 +482,7 @@ export class PublicCustomerController {
 
       // Step 5: Issue personal QR credential
       let personalQrCredential: string | undefined;
+      let personalQrShortCode: string | undefined;
 
       const existingQrResult = await connection.query<{ credentialHash: string }>(
         `SELECT credential_hash FROM customer_qr_credentials 
@@ -491,17 +492,18 @@ export class PublicCustomerController {
       );
 
       if (existingQrResult.rows.length === 0) {
-        const credential = crypto.randomBytes(32).toString('base64url');
-        const credentialHash = hashCustomerQrCredential(credential);
+        const credentialId = crypto.randomUUID();
+        const codes = deriveCustomerQrCodes(customerAccountId, credentialId);
 
         await connection.query(
           `INSERT INTO customer_qr_credentials 
-             (customer_account_id, credential_hash, issued_at)
-           VALUES ($1, $2, now())`,
-          [customerAccountId, credentialHash],
+             (id, customer_account_id, credential_hash, short_code_hash, issued_at)
+           VALUES ($1, $2, $3, $4, now())`,
+          [credentialId, customerAccountId, codes.credentialHash, codes.shortCodeHash],
         );
 
-        personalQrCredential = credential;
+        personalQrCredential = codes.credential;
+        personalQrShortCode = codes.shortCode;
         console.log(`[PublicJoin] Issued new QR credential`);
       } else {
         console.log(`[PublicJoin] Using existing QR credential`);
@@ -547,6 +549,7 @@ export class PublicCustomerController {
           joinedAt: new Date().toISOString(),
         },
         personalQrCredential,
+        personalQrShortCode,
         session: {
           token: sessionToken,
           expiresAt: sessionExpiresAt.toISOString(),

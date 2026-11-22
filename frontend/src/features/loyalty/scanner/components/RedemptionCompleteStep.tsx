@@ -36,21 +36,14 @@ export function RedemptionCompleteStep({
           <div className="flex justify-between">
             <span className="text-[var(--text-muted)]">{t('cost')}</span>
             <span className="font-medium text-[var(--text)]">
-              {redemption.reward.pointsCost} {t('points')}
-              {redemption.reward.stampsCost ? ` + ${redemption.reward.stampsCost} ${t('stamps')}` : ''}
+              {redemption.reward.cost} {redemption.reward.activityType === 'stamps' ? t('stamps') : t('points')}
             </span>
           </div>
           <div className="border-t border-[var(--border)] pt-3">
-            <div className="flex justify-between">
-              <span className="text-[var(--text-muted)]">{t('balanceBefore')}</span>
-              <span className="text-sm">
-                {redemption.customerBalanceBefore.stamps} {t('stamps')}, {redemption.customerBalanceBefore.points} {t('points')}
-              </span>
-            </div>
             <div className="flex justify-between font-bold">
-              <span>{t('balanceAfter')}</span>
+              <span>{t('newBalance')}</span>
               <span className="text-[var(--text)]">
-                {redemption.customerBalanceAfter.stamps} {t('stamps')}, {redemption.customerBalanceAfter.points} {t('points')}
+                {redemption.newBalance.stamps} {t('stamps')}, {redemption.newBalance.points} {t('points')}
               </span>
             </div>
           </div>

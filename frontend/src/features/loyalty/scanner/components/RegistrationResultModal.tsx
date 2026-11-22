@@ -22,7 +22,7 @@ export function RegistrationResultModal({
 
   if (!result) return null;
 
-  const { isNewCustomer, name, phone, personalQrCredential } = result;
+  const { isNewCustomer, name, phone, personalQrCredential, personalQrShortCode } = result;
 
   return (
     <Modal
@@ -73,6 +73,14 @@ export function RegistrationResultModal({
                   className="w-48 h-48 mx-auto"
                 />
               </div>
+              {personalQrShortCode && (
+                <div className="mt-3 space-y-1">
+                  <p className="text-xs text-[var(--text-muted)]">{t('customerShortCodeLabel')}</p>
+                  <p dir="ltr" className="select-all font-mono text-xl font-bold tracking-widest text-[var(--text)]">
+                    {personalQrShortCode}
+                  </p>
+                </div>
+              )}
               <p className="text-xs text-[var(--text-muted)] mt-2">
                 {t('customerShowQRToMerchant')}
               </p>

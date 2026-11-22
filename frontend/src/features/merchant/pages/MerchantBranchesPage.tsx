@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useI18n } from '../../../shared/i18n/i18n';
-import { Button, Card, Input } from '../../../components/ui';
+import { Button, Card, Input, Section, FormFeedback } from '../../../components/ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { paths } from '../../../app/routes/paths';
 import { useGetBusinessSetupQuery } from '@/features/business-onboarding/api/businessOnboardingApi';
@@ -88,7 +88,7 @@ export default function MerchantBranchesPage() {
 
     const name = formData.name.trim();
     if (!name) {
-      setError(t('branchName') + ' ' + t('required'));
+      setError(t('branchNameRequired'));
       return;
     }
 
@@ -113,7 +113,8 @@ export default function MerchantBranchesPage() {
       }
       resetForm();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('error'));
+      const message = err instanceof Error ? err.message : '';
+      setError(message || t('error'));
     }
   };
 
@@ -136,7 +137,7 @@ export default function MerchantBranchesPage() {
       const message = err instanceof Error ? err.message : '';
       setError(message.includes('only branch') || message.includes('At least one') 
         ? t('cannotDeleteOnlyBranch') 
-        : message);
+        : message || t('error'));
     } finally {
       setDeletingId(null);
     }
@@ -152,7 +153,7 @@ export default function MerchantBranchesPage() {
 
   if (isLoading) {
     return (
-      <main className="flex-1 bg-[var(--background)] p-4 md:p-8">
+      <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
         <div className="mx-auto max-w-7xl w-full space-y-6">
           <div className="h-8 w-64 bg-[var(--subtle)] rounded animate-pulse" />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -161,12 +162,12 @@ export default function MerchantBranchesPage() {
             ))}
           </div>
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="flex-1 bg-[var(--background)] p-4 md:p-8">
+    <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
       <div className="mx-auto max-w-7xl w-full">
         {/* Header */}
         <header className="mb-8">
@@ -186,12 +187,7 @@ export default function MerchantBranchesPage() {
         </header>
 
         {/* Main Content */}
-        <section className="mb-10">
-          <div className="flex items-center gap-2 mb-4">
-            <Building2 className="h-5 w-5 text-[var(--brand)]" />
-            <h2 className="text-[var(--text)] text-xl font-semibold">{t('yourBusiness')}</h2>
-          </div>
-          
+        <Section title={t('yourBusiness')}>
           {/* Branch limit info */}
           <p className="text-[var(--text-muted)] text-sm mb-6">
             {t('branchCount')}: {branchCount}
@@ -348,34 +344,15 @@ export default function MerchantBranchesPage() {
                   placeholder={t('branchPhone')}
                 />
 
-                {error && (
-                  <div className="p-3 bg-[var(--danger-light)] border border-[var(--danger)] rounded-md text-[var(--danger)] text-sm">
-                    {error}
-                  </div>
-                )}
-
-                {success && (
-                  <div className="p-3 bg-[var(--success-light)] border border-[var(--success)] rounded-md text-[var(--success)] text-sm">
-                    {success}
-                  </div>
-                )}
+                <FormFeedback error={error} success={success} />
 
                 <div className="flex gap-4 pt-4">
                   <Button
                     type="submit"
-                    disabled={isCreating || isUpdating}
+                    isLoading={isCreating || isUpdating}
                     className="flex-1"
                   >
-                    {isCreating || isUpdating ? (
-                      <>
-                        <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2" />
-                        {t('saving') + '...'}
-                      </>
-                    ) : editingBranch ? (
-                      t('updateBranch')
-                    ) : (
-                      t('createBranch')
-                    )}
+                    {editingBranch ? t('updateBranch') : t('createBranch')}
                   </Button>
                   <Button
                     type="button"
@@ -398,11 +375,9 @@ export default function MerchantBranchesPage() {
               </Button>
             </div>
           )}
-        </section>
+        </Section>
 
-        {/* Quick Actions */}
-        <section className="mb-8">
-          <h3 className="text-[var(--text)] text-lg font-semibold mb-4">{t('backToDashboard')}</h3>
+        <Section title={t('backToDashboard')}>
           <div className="flex flex-wrap gap-4">
             <Button variant="outline" onClick={() => navigate(paths.merchantDashboard)}>
               <Home className="h-4 w-4 mr-2" />
@@ -413,9 +388,9 @@ export default function MerchantBranchesPage() {
               {t('configureLoyalty')}
             </Button>
           </div>
-        </section>
+        </Section>
       </div>
-    </main>
+    </div>
   );
 }
 

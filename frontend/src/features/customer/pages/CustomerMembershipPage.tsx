@@ -50,7 +50,11 @@ export default function CustomerMembershipPage() {
     data: membership, 
     isLoading: isLoadingMembership, 
     error: membershipError 
-  } = useGetMembershipQuery(membershipId || '') as {
+  } = useGetMembershipQuery(membershipId || '', {
+    refetchOnMountOrArgChange: true,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
+  }) as {
     data: BackendMembershipDetail | undefined;
     isLoading: boolean;
     error: unknown;
