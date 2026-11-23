@@ -21,6 +21,9 @@ yarn.lock
 # Frontend build output (built in CI / Docker, never committed)
 frontend/dist/
 
+# Wrangler local state (wrangler dev / dry runs)
+frontend/.wrangler/
+
 # Docker volumes (local development only)
 docker-volumes/
 

@@ -1,0 +1,19 @@
+// Cloudflare Worker for the FIDELIY frontend (static SPA + /api proxy).
+// BACKEND_ORIGIN is NOT set here: pass it at deploy time with
+//   npx wrangler deploy --var BACKEND_ORIGIN:<https backend origin>
+// No account ID here either (taken from the deploy environment).
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "fideliy",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-11-19",
+  "assets": {
+    // Output of `npm run build` (vite).
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // Only these reach the Worker before assets; everything else is served
+    // straight from assets (SPA fallback to index.html).
+    "run_worker_first": ["/api", "/api/*"]
+  }
+}
