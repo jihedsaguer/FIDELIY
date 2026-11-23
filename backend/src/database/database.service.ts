@@ -32,7 +32,14 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       connectionString,
       max: 20, // Connection pool size
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      // 10s covers a Neon scale-to-zero cold start.
+      connectionTimeoutMillis: 10000,
+    });
+
+    // An idle client can error (e.g. the server closes it); without a listener
+    // pg's 'error' event would crash the process. Log and let the pool recover.
+    this.pool.on('error', (error) => {
+      console.error('❌ Unexpected PostgreSQL pool error (idle client):', error);
     });
 
     this.db = drizzle(this.pool, { schema: databaseSchema });

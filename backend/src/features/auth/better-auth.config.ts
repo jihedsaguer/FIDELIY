@@ -61,6 +61,46 @@ export function validateSMSProviderForProduction(): void {
   }
 }
 
+const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+/**
+ * Validate the public URLs used for auth callbacks, trusted origins and CORS.
+ *
+ * In production BETTER_AUTH_URL and FRONTEND_URL must be set to https URLs;
+ * the localhost fallbacks below apply outside production only.
+ *
+ * ALLOW_INSECURE_URLS_FOR_LOCAL_PROD=true exists only for the local
+ * prod-like smoke test (docker-compose.prod.yml): it permits http, and only
+ * for localhost / 127.0.0.1 hosts. It never relaxes any other host, so it
+ * cannot weaken a real deployment. Never set it on Render.
+ *
+ * @throws Error if a URL is missing, malformed or not https in production
+ */
+export function validatePublicUrlsForProduction(): void {
+  if (process.env.NODE_ENV !== 'production') return;
+
+  const allowLocalHttp = process.env.ALLOW_INSECURE_URLS_FOR_LOCAL_PROD === 'true';
+
+  for (const name of ['BETTER_AUTH_URL', 'FRONTEND_URL'] as const) {
+    const raw = process.env[name];
+    if (!raw) {
+      throw new Error(`${name} environment variable is required in production.`);
+    }
+    let url: URL;
+    try {
+      url = new URL(raw);
+    } catch {
+      throw new Error(`${name} must be an absolute https URL in production.`);
+    }
+    const isHttps = url.protocol === 'https:';
+    const isAllowedLocalHttp =
+      allowLocalHttp && url.protocol === 'http:' && LOCAL_HOSTNAMES.has(url.hostname);
+    if (!isHttps && !isAllowedLocalHttp) {
+      throw new Error(`${name} must be an absolute https URL in production.`);
+    }
+  }
+}
+
 /**
  * Mock SMS provider for development.
  * In production, this will be replaced with actual SMS vendor (Twilio, Vonage, etc.)
@@ -97,7 +137,9 @@ export function initializeBetterAuth(db: NodePgDatabase): any {
     // Authentication secret (required; must be set via environment variable)
     secret: process.env.BETTER_AUTH_SECRET!,
 
-    // Base URL for authentication callbacks (required for production, optional for local dev)
+    // Base URL for authentication callbacks. The localhost fallbacks apply in
+    // dev/test only: production startup fails earlier without https URLs
+    // (validatePublicUrlsForProduction, called from main.ts).
     baseURL: process.env.BETTER_AUTH_URL || `http://localhost:${process.env.PORT || 3000}`,
     trustedOrigins: [
       process.env.BETTER_AUTH_URL || `http://localhost:${process.env.PORT || 3000}`,
@@ -166,6 +208,13 @@ export function initializeBetterAuth(db: NodePgDatabase): any {
 
     // Advanced options
     advanced: {
+      // Client IP for Better Auth's own rate limiting behind Render and the
+      // Cloudflare Worker (which sets x-client-ip). Multi-value x-forwarded-for
+      // chains are ignored by Better Auth without trustedProxies. Direct calls
+      // to the onrender.com URL can spoof these headers (see shared/http/client-ip.ts).
+      ipAddress: {
+        ipAddressHeaders: ['x-client-ip', 'x-forwarded-for'],
+      },
       database: {
         generateId: 'uuid',
         joins: true, // Enable joins for better query performance
@@ -194,7 +243,7 @@ export function initializeBetterAuth(db: NodePgDatabase): any {
     // Rate limiting (disabled for tests)
     rateLimit: {
       enabled: process.env.NODE_ENV !== 'test',
-      window: 15 * 60 * 1000, // 15 minutes
+      window: 15 * 60, // 15 minutes; Better Auth's window unit is seconds
       max: 100, // Max requests per window
     },
   });

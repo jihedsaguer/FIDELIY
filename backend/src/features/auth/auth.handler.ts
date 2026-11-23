@@ -5,6 +5,7 @@ import { toNodeHandler } from "better-auth/node";
 import { AuthService } from "./auth.service";
 import { PhoneAuthService } from "./phone-auth.service";
 import { RateLimitService } from "../../shared/security/rate-limit.service";
+import { getClientIp } from "../../shared/http/client-ip";
 import { PhoneSignInDto } from "./dto/phone-sign-in.dto";
 
 /**
@@ -40,7 +41,8 @@ export class AuthHandler {
     @Body() dto: PhoneSignInDto,
     @Res() res: Response,
   ): Promise<void> {
-    const ip = req.ip || "unknown";
+    // Per-client IP behind the edge proxy (x-client-ip), else req.ip.
+    const ip = getClientIp(req);
 
     try {
       // Normalize and validate phone

@@ -14,7 +14,12 @@ redis-data/
 node_modules/
 pnpm-lock.yaml
 yarn.lock
-package-lock.json
+# Root lockfile is stale (root package.json has no dependencies); backend/ and
+# frontend/ lockfiles are committed so `npm ci` is reproducible.
+/package-lock.json
+
+# Frontend build output (built in CI / Docker, never committed)
+frontend/dist/
 
 # Docker volumes (local development only)
 docker-volumes/

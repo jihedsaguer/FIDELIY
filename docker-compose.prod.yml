@@ -1,0 +1,93 @@
+# Local production-like smoke test (NOT the real deployment, no real data).
+# Standalone: own project name, network and volume; does not touch the dev
+# stack (docker-compose.yml) or its volumes. See README "Local
+# production-like smoke test".
+#
+#   docker compose -f docker-compose.prod.yml --env-file <throwaway env file> up -d --build
+#   docker compose -f docker-compose.prod.yml --env-file <throwaway env file> down -v
+#
+# Required variables (names only; pass throwaway values, never commit them):
+#   POSTGRES_PASSWORD, BETTER_AUTH_SECRET, CUSTOMER_QR_SECRET
+name: fideliy-prod
+
+x-database-url: &database-url postgresql://fideliy:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/fideliy
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fideliy
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: fideliy
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fideliy -d fideliy"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: ./backend
+      target: runtime
+    command: ["node", "dist/database/migrate.js"]
+    restart: "no"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: *database-url
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backend:
+    build:
+      context: ./backend
+      target: runtime
+    restart: unless-stopped
+    mem_limit: 512m
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: *database-url
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET}
+      CUSTOMER_QR_SECRET: ${CUSTOMER_QR_SECRET:?set CUSTOMER_QR_SECRET}
+      # Release 1 has no OTP; "mock" is rejected in production.
+      SMS_PROVIDER: none
+      # Same-origin through the nginx proxy below (like the Cloudflare Worker).
+      BETTER_AUTH_URL: http://localhost:${SMOKE_HTTP_PORT:-8080}
+      FRONTEND_URL: http://localhost:${SMOKE_HTTP_PORT:-8080}
+      # Production requires https URLs. This flag allows http ONLY for
+      # localhost/127.0.0.1 hosts, so the smoke test can run with
+      # NODE_ENV=production. Never set it on Render.
+      ALLOW_INSECURE_URLS_FOR_LOCAL_PROD: "true"
+      # PORT is left unset (default 3000), as on Render.
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  frontend:
+    build:
+      context: ./frontend
+      target: prod
+    restart: unless-stopped
+    ports:
+      # Host port: SMOKE_HTTP_PORT (default 8080) if 8080 is already in use.
+      - "127.0.0.1:${SMOKE_HTTP_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_prod_data:
