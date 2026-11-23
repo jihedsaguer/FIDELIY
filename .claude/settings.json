@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "disableBypassPermissionsMode": "disable",
+    "allow": [
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(npx tsc --noEmit *)",
+      "Bash(npx vitest run *)",
+      "Bash(npm test --prefix backend *)",
+      "Bash(npm test --prefix frontend *)",
+      "Bash(npm run lint --prefix backend *)",
+      "Bash(npm run type-check --prefix frontend *)"
+    ],
+    "ask": [
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git stash *)",
+      "Bash(git reset *)",
+      "Bash(git clean *)",
+      "Bash(git checkout *)",
+      "Bash(git restore *)",
+      "Bash(git rebase *)",
+      "Bash(npm run db:migrate *)",
+      "Bash(docker compose *)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.local)",
+      "Read(./.env.*.local)",
+      "Read(./.env.mcp)",
+      "Read(./backend/.env)",
+      "Read(./frontend/.env)",
+      "Read(./frontend/.env.local)"
+    ]
+  }
+}
