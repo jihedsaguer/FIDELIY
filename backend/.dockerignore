@@ -2,5 +2,8 @@ node_modules
 dist
 coverage
 test
+.git
+*.log
+.test-storage
 .env
 .env.*

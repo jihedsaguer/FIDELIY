@@ -45,6 +45,27 @@ Details and caveats (the local database role bypasses RLS) are in `docs/DATABASE
 
 **Docker gotcha:** the frontend container keeps `node_modules` in a named volume, so a rebuild or restart does not install a newly added dependency (Vite then reports `Failed to resolve import`). Run `docker exec fideliy-frontend npm install` and restart the container (`docker restart fideliy-frontend`).
 
+### Local production-like smoke test
+
+`docker-compose.prod.yml` runs the production images (backend `runtime` target, frontend `prod` target served by nginx, which proxies `/api/` like the Cloudflare Worker) with `NODE_ENV=production`, its own PostgreSQL volume and project name (`fideliy-prod`); it does not touch the dev stack. Use throwaway values only, in a file outside the repository (not the root `.env`):
+
+```bash
+ENVF="$(mktemp)"   # throwaway, outside the repo
+node -e "const c=require('crypto');for(const k of ['POSTGRES_PASSWORD','BETTER_AUTH_SECRET','CUSTOMER_QR_SECRET'])console.log(k+'='+c.randomBytes(32).toString('hex'))" > "$ENVF"
+# echo "SMOKE_HTTP_PORT=8088" >> "$ENVF"   # if port 8080 is taken
+
+docker compose -f docker-compose.prod.yml --env-file "$ENVF" up -d --build
+docker compose -f docker-compose.prod.yml --env-file "$ENVF" ps -a   # migrate: Exited (0); others healthy
+curl -f http://localhost:8080/api/health
+curl -f http://localhost:8080/merchant/login                         # SPA index.html
+docker compose -f docker-compose.prod.yml --env-file "$ENVF" logs backend
+
+docker compose -f docker-compose.prod.yml --env-file "$ENVF" down -v  # removes only postgres_prod_data
+rm "$ENVF"
+```
+
+The stack sets `ALLOW_INSECURE_URLS_FOR_LOCAL_PROD=true` because production otherwise requires https `BETTER_AUTH_URL` / `FRONTEND_URL`; the flag only accepts http for localhost hosts and must never be set in a real deployment. Never run `down -v` on the dev `docker-compose.yml`.
+
 ### Tests and checks
 
 ```bash

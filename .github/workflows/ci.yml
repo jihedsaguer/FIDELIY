@@ -1,0 +1,103 @@
+# FIDELIY CI: type checks, tests, builds and Docker images. No deployment.
+# The repository is public: this workflow uses NO repository secrets; every
+# credential below is an inline dummy value for throwaway CI services only.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx vitest run
+      - run: npm run build
+      # Validates wrangler.jsonc and bundles the Worker; needs no Cloudflare
+      # credentials and uploads nothing.
+      - run: npx wrangler deploy --dry-run --var BACKEND_ORIGIN:https://example.invalid
+
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    # Throwaway database for this job only. The service user is a superuser,
+    # so it bypasses RLS: these integration specs do NOT prove tenant isolation.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: fideliy_ci
+          POSTGRES_PASSWORD: ci-dummy-password
+          POSTGRES_DB: fideliy_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fideliy_ci -d fideliy_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Inline dummy value (not a secret). There is no .env file in CI;
+      # migrate.ts and the app read DATABASE_URL from the environment.
+      # CUSTOMER_QR_SECRET is set by backend/test/setup.ts for every test run.
+      DATABASE_URL: postgresql://fideliy_ci:ci-dummy-password@localhost:5432/fideliy_ci
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run db:migrate
+      # Only the two maintained integration specs; the other opt-in
+      # integration specs are stale and stay skipped.
+      - name: Integration specs (PostgreSQL)
+        env:
+          # Step-scoped dummy: unit spec implementation-verification.spec.ts
+          # expects BETTER_AUTH_SECRET to be unset during `npm test`.
+          BETTER_AUTH_SECRET: ci-dummy-better-auth-secret-not-a-real-secret-0000
+          RUN_MERCHANT_TRANSACTION_INTEGRATION: "true"
+          RUN_LOYALTY_LEDGER_INTEGRATION: "true"
+        run: npm test -- --runTestsByPath test/merchant-transaction.integration.spec.ts test/loyalty-ledger.integration.spec.ts --forceExit
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: docker build --target runtime ./backend
+      - run: docker build --target prod ./frontend

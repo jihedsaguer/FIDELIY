@@ -13,6 +13,89 @@
 import { AuthService } from '../../src/features/auth/auth.service';
 import { SessionService } from '../../src/features/auth/session.service';
 import { DatabaseService } from '../../src/database/database.service';
+import {
+  initializeBetterAuth,
+  validatePublicUrlsForProduction,
+} from '../../src/features/auth/better-auth.config';
+
+describe('initializeBetterAuth proxy and rate-limit options', () => {
+  it('reads the client IP from x-client-ip, then x-forwarded-for', () => {
+    const auth = initializeBetterAuth({} as any);
+    expect(auth.options.advanced.ipAddress.ipAddressHeaders).toEqual([
+      'x-client-ip',
+      'x-forwarded-for',
+    ]);
+  });
+
+  it('uses a 15-minute rate-limit window expressed in seconds', () => {
+    const auth = initializeBetterAuth({} as any);
+    // Better Auth's rule.window is in seconds (BetterAuthRateLimitRule docs).
+    expect(auth.options.rateLimit.window).toBe(900);
+    expect(auth.options.rateLimit.max).toBe(100);
+  });
+});
+
+describe('validatePublicUrlsForProduction', () => {
+  let originalEnv: NodeJS.ProcessEnv;
+
+  beforeEach(() => {
+    originalEnv = { ...process.env };
+    process.env.NODE_ENV = 'production';
+    process.env.BETTER_AUTH_URL = 'https://api.fideliy.example';
+    process.env.FRONTEND_URL = 'https://app.fideliy.example';
+    delete process.env.ALLOW_INSECURE_URLS_FOR_LOCAL_PROD;
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it('accepts https URLs in production', () => {
+    expect(() => validatePublicUrlsForProduction()).not.toThrow();
+  });
+
+  it('rejects a missing BETTER_AUTH_URL in production', () => {
+    delete process.env.BETTER_AUTH_URL;
+    expect(() => validatePublicUrlsForProduction()).toThrow(/BETTER_AUTH_URL/);
+  });
+
+  it('rejects an empty FRONTEND_URL in production', () => {
+    process.env.FRONTEND_URL = '';
+    expect(() => validatePublicUrlsForProduction()).toThrow(/FRONTEND_URL/);
+  });
+
+  it('rejects an http URL in production', () => {
+    process.env.FRONTEND_URL = 'http://app.fideliy.example';
+    expect(() => validatePublicUrlsForProduction()).toThrow(/FRONTEND_URL.*https/);
+  });
+
+  it('rejects a value that is not a URL in production', () => {
+    process.env.BETTER_AUTH_URL = 'api.fideliy.example';
+    expect(() => validatePublicUrlsForProduction()).toThrow(/BETTER_AUTH_URL/);
+  });
+
+  it('does not validate outside production', () => {
+    process.env.NODE_ENV = 'development';
+    delete process.env.BETTER_AUTH_URL;
+    delete process.env.FRONTEND_URL;
+    expect(() => validatePublicUrlsForProduction()).not.toThrow();
+  });
+
+  it('allows http://localhost only with the explicit local prod-like flag', () => {
+    process.env.BETTER_AUTH_URL = 'http://localhost:8080';
+    process.env.FRONTEND_URL = 'http://localhost:8080';
+    expect(() => validatePublicUrlsForProduction()).toThrow(/https/);
+
+    process.env.ALLOW_INSECURE_URLS_FOR_LOCAL_PROD = 'true';
+    expect(() => validatePublicUrlsForProduction()).not.toThrow();
+  });
+
+  it('keeps rejecting non-localhost http URLs even with the local flag', () => {
+    process.env.ALLOW_INSECURE_URLS_FOR_LOCAL_PROD = 'true';
+    process.env.BETTER_AUTH_URL = 'http://fideliy-backend.onrender.com';
+    expect(() => validatePublicUrlsForProduction()).toThrow(/BETTER_AUTH_URL/);
+  });
+});
 
 describe('Startup Validation - Production Safeguards', () => {
   let authService: AuthService;

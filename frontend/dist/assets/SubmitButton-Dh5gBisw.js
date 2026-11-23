@@ -1,1 +1,0 @@
-import{t as e}from"./jsx-runtime-DyZJNswf.js";var t=e();function n({pending:e,idle:n,waiting:r}){return(0,t.jsx)(`button`,{className:`primary-button`,type:`submit`,disabled:e,children:e?r:n})}export{n as t};
