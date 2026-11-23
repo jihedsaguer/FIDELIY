@@ -1,139 +1,86 @@
-import { LoyaltyCardPreview } from '../../components/LoyaltyCardPreview';
-import { getProgramTypeLabel, type TranslateFunction } from '../../../loyalty/components';
-import type { EnhancedProgramConfigurationRequest } from '../../api/programApi';
+import { useMemo } from 'react';
+import { LoyaltyCardView } from '../../../loyalty/components';
+import type { MembershipReward } from '../../../loyalty/api/customerApi';
+import { useGetBusinessSetupQuery } from '../../../business-onboarding/api/businessOnboardingApi';
+import { useI18n } from '@/shared/i18n/i18n';
 import type { ProgramFormData } from '../types/programForm.types';
+import { formatProgramType } from './programUtils';
 
 interface ProgrammeSummaryPanelProps {
   formData: ProgramFormData;
-  t: TranslateFunction;
+}
+
+/** Sample balance shown in the preview: 60 % of the way to the reward. */
+function sampleBalance(threshold: number): number {
+  return threshold >= 1 ? Math.floor(threshold * 0.6) : 0;
 }
 
 /**
- * ProgrammeSummaryPanel - Shows a live summary of the programme being configured
- * Improved organization:
- * - Clear section hierarchy with programme metadata first
- * - Separate sections for Stamps and Points configurations
- * - Earning rules and rewards clearly grouped
- * - Customer Loyalty Card Preview for visual verification
- * Includes text summary and visual preview of customer loyalty card
- * Uses shared ProgramTypeLabel for consistent type labeling.
+ * ProgrammeSummaryPanel - live summary of the programme being configured and a
+ * preview of the customer's card (shared LoyaltyCardView) with sample progress.
  */
-export function ProgrammeSummaryPanel({ formData, t }: ProgrammeSummaryPanelProps) {
-  const programmeLabel = getProgramTypeLabel(formData.type, t);
-  
-  const hasStampConfig = formData.type === 'stamps' || formData.type === 'both';
-  const hasPointsConfig = formData.type === 'points' || formData.type === 'both';
+export function ProgrammeSummaryPanel({ formData }: ProgrammeSummaryPanelProps) {
+  const { t, locale } = useI18n();
+  const business = useGetBusinessSetupQuery().data?.business ?? null;
+  const hasStamps = formData.type === 'stamps' || formData.type === 'both';
+  const hasPoints = formData.type === 'points' || formData.type === 'both';
+  const joinedAt = useMemo(() => new Date().toISOString(), []);
+  const formatNumber = (value: number) =>
+    new Intl.NumberFormat(locale === 'ar' ? 'ar-TN' : 'fr-TN', { maximumFractionDigits: 2 }).format(value);
 
-  // Create a preview programme object from form data
-  const previewProgramme: EnhancedProgramConfigurationRequest = {
-    name: formData.name || t('previewProgramme'),
-    description: formData.description || '',
-    type: formData.type,
-    stamps: hasStampConfig ? {
-      earningRule: { purchasesPerStamp: formData.stampPurchasesPerStamp },
-      rewardThresholds: [{ 
-        stampsRequired: formData.stampRewardThreshold, 
-        name: formData.stampRewardName || t('reward'), 
-        isActive: true 
-      }],
-      stampExpirationDays: formData.stampExpirationDays ?? undefined,
-    } : undefined,
-    points: hasPointsConfig ? {
-      earningRule: { 
-        pointsPerCurrencyUnit: formData.pointsPerCurrency, 
-        currencyCode: 'TND' 
-      },
-      rewardThresholds: [{ 
-        pointsRequired: formData.pointsRewardThreshold, 
-        name: formData.pointsRewardName || t('reward'), 
-        isActive: true 
-      }],
-      pointsExpirationDays: formData.pointsExpirationDays ?? undefined,
-    } : undefined,
-  };
+  const rewards: MembershipReward[] = [];
+  if (hasStamps && formData.stampRewardThreshold >= 1) {
+    rewards.push({
+      name: formData.stampRewardName.trim() || t('reward'),
+      activityType: 'stamps',
+      cost: formData.stampRewardThreshold,
+    });
+  }
+  if (hasPoints && formData.pointsRewardThreshold >= 1) {
+    rewards.push({
+      name: formData.pointsRewardName.trim() || t('reward'),
+      activityType: 'points',
+      cost: formData.pointsRewardThreshold,
+    });
+  }
+
+  const row = (label: string, value: string) => (
+    <div className="flex items-start justify-between gap-3">
+      <dt className="text-[var(--text-muted)]">{label}</dt>
+      <dd className="min-w-0 break-words text-end font-medium text-[var(--text)]">{value}</dd>
+    </div>
+  );
 
   return (
-    <div className="program-summary-panel">
-      <h4>{t('programmeDetails')}</h4>
-      
-      {/* Programme Metadata Section */}
-      <div className="summary-section">
-        <div className="summary-row">
-          <span className="summary-label">{t('programmeName')}</span>
-          <span className="summary-value">{formData.name || <em>{t('notSet')}</em>}</span>
-        </div>
-        
-        <div className="summary-row">
-          <span className="summary-label">{t('programmeType')}</span>
-          <span className="summary-value">{programmeLabel}</span>
-        </div>
-        
-        {formData.description && (
-          <div className="summary-row">
-            <span className="summary-label">{t('programmeDescription')}</span>
-            <span className="summary-value">{formData.description}</span>
-          </div>
-        )}
+    <aside className="space-y-4 rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--subtle)] p-4 lg:sticky lg:top-0">
+      <h3 className="text-base font-semibold text-[var(--text)]">{t('programmeDetails')}</h3>
+      <dl className="space-y-2 text-sm">
+        {row(t('programmeName'), formData.name.trim() || t('notSet'))}
+        {row(t('programmeType'), formatProgramType(formData.type, t))}
+        {hasStamps && row(t('stampsRequired'), String(formData.stampRewardThreshold || '-'))}
+        {hasStamps && row(t('rewardName'), formData.stampRewardName.trim() || t('notSet'))}
+        {hasPoints && row(t('pointsPerTND'), formatNumber(formData.pointsPerCurrency))}
+        {hasPoints && row(t('pointsRequired'), String(formData.pointsRewardThreshold || '-'))}
+        {hasPoints && row(t('rewardName'), formData.pointsRewardName.trim() || t('notSet'))}
+      </dl>
+      {hasStamps && <p className="text-xs text-[var(--text-muted)]">{t('oneStampPerPurchase')}</p>}
+
+      <div className="space-y-2">
+        <h3 className="text-base font-semibold text-[var(--text)]">{t('customerView')}</h3>
+        <LoyaltyCardView
+          businessName={business?.name || t('business')}
+          logoUrl={business?.logoUrl ?? null}
+          programType={formData.type}
+          balance={{
+            stamps: hasStamps ? sampleBalance(formData.stampRewardThreshold) : 0,
+            points: hasPoints ? sampleBalance(formData.pointsRewardThreshold) : 0,
+          }}
+          rewards={rewards}
+          joinedAt={joinedAt}
+        />
+        <p className="text-xs text-[var(--text-muted)]">{t('previewSampleNote')}</p>
       </div>
-
-      {/* Stamp Configuration Section */}
-      {hasStampConfig && (
-        <div className="summary-section">
-          <h5>{t('stamps')}</h5>
-          <div className="summary-row">
-            <span className="summary-label">{t('stampsPerPurchase')}</span>
-            <span className="summary-value">
-              {formData.stampPurchasesPerStamp} {t('purchase')}{formData.stampPurchasesPerStamp !== 1 ? 's' : ''} = 1 {t('stamp')}
-            </span>
-          </div>
-          <div className="summary-row">
-            <span className="summary-label">{t('reward')}</span>
-            <span className="summary-value">
-              {formData.stampRewardThreshold} {t('stamps')} = {formData.stampRewardName || <em>{t('reward')}</em>}
-            </span>
-          </div>
-          <div className="summary-row">
-            <span className="summary-label">{t('expiration')}</span>
-            <span className="summary-value">
-              {formData.stampExpirationDays ? `${formData.stampExpirationDays} ${t('days')}` : t('noExpiration')}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Points Configuration Section */}
-      {hasPointsConfig && (
-        <div className="summary-section">
-          <h5>{t('points')}</h5>
-          <div className="summary-row">
-            <span className="summary-label">{t('pointsPerTND')}</span>
-            <span className="summary-value">
-              1 TND = {formData.pointsPerCurrency} {t('point')}{formData.pointsPerCurrency !== 1 ? 's' : ''}
-            </span>
-          </div>
-          <div className="summary-row">
-            <span className="summary-label">{t('reward')}</span>
-            <span className="summary-value">
-              {formData.pointsRewardThreshold} {t('points')} = {formData.pointsRewardName || <em>{t('reward')}</em>}
-            </span>
-          </div>
-          <div className="summary-row">
-            <span className="summary-label">{t('expiration')}</span>
-            <span className="summary-value">
-              {formData.pointsExpirationDays ? `${formData.pointsExpirationDays} ${t('days')}` : t('noExpiration')}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Customer Loyalty Card Preview */}
-      {formData.name && (
-        <div className="summary-section">
-          <h5>{t('customerView')}</h5>
-          <LoyaltyCardPreview programme={previewProgramme} t={t} />
-        </div>
-      )}
-    </div>
+    </aside>
   );
 }
 
