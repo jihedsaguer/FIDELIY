@@ -60,6 +60,17 @@
   --info: #0284c7;          /* Blue */
   --info-light: #eff6ff;
   --info-subtle: #dbeafe;
+
+  /* Programme type accents (text on -soft: stamps 4.91:1, points 6.98:1, combined 5.64:1) */
+  --accent-stamps: #0f766e;
+  --accent-stamps-soft: #e6f6f4;
+  --accent-stamps-border: #99d5cd;
+  --accent-points: #4338ca;
+  --accent-points-soft: #eef0ff;
+  --accent-points-border: #c3c8f5;
+  --accent-combined: #a21caf;
+  --accent-combined-soft: #fbeefc;
+  --accent-combined-border: #e7b5ec;
 }
 
 /* Dark Mode - Deep Comfortable Surfaces */
@@ -99,6 +110,17 @@
   --info: #60a5fa;          /* Brighter blue for dark mode */
   --info-light: #1e2a38;
   --info-subtle: #16202c;
+
+  /* Programme type accents - dark variants */
+  --accent-stamps: #5eead4;
+  --accent-stamps-soft: #12302c;
+  --accent-stamps-border: #1f5a52;
+  --accent-points: #a5b4fc;
+  --accent-points-soft: #1c1f3d;
+  --accent-points-border: #343a74;
+  --accent-combined: #f0abfc;
+  --accent-combined-soft: #2e1631;
+  --accent-combined-border: #5b2a61;
 }
 
 /* ========================================

@@ -1,36 +1,20 @@
+import { Coins, Layers, Stamp } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
 /**
- * ProgramTypeIcon - Displays an icon representing the programme type
- * Used in programme cards and listings
+ * ProgramTypeIcon - decorative icon for a programme type (stamps, points, combined).
+ * Colour comes from the parent (accent text class).
  */
-export function ProgramTypeIcon({ type }: { type: string }) {
-  const IconStamp = () => (
-    <svg className="program-type-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2L2 7l10 5 10-5-10-5z" />
-      <path d="M2 17l10 5 10-5" />
-      <path d="M2 12l10 5 10-5" />
-    </svg>
-  );
-  const IconPoints = () => (
-    <svg className="program-type-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="3" />
-      <circle cx="12" cy="5" r="2" fill="currentColor" />
-      <circle cx="12" cy="19" r="2" fill="currentColor" />
-      <path d="M12 8v8" />
-    </svg>
-  );
-  const IconCombined = () => (
-    <svg className="program-type-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2L2 7l10 5 10-5-10-5z" />
-      <circle cx="12" cy="12" r="3" />
-      <path d="M2 17l10 5 10-5" />
-      <path d="M2 12l10 5 10-5" />
-    </svg>
-  );
-  
+export function ProgramTypeIcon({ type, className }: { type: string; className?: string }) {
+  const classes = cn('h-5 w-5 shrink-0', className);
   switch (type) {
-    case 'stamps': return <IconStamp />;
-    case 'points': return <IconPoints />;
-    case 'both': return <IconCombined />;
-    default: return null;
+    case 'stamps':
+      return <Stamp aria-hidden="true" className={classes} />;
+    case 'points':
+      return <Coins aria-hidden="true" className={classes} />;
+    case 'both':
+      return <Layers aria-hidden="true" className={classes} />;
+    default:
+      return null;
   }
 }

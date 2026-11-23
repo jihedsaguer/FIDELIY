@@ -8,6 +8,7 @@ export { FormFeedback } from './FormFeedback';
 export { Modal } from './Modal';
 export { ConfirmDialog } from './ConfirmDialog';
 export { Accordion, AccordionItem } from './Accordion';
+export { Listbox, type ListboxOption } from './Listbox';
 
 // Re-export from lib
 export { cn } from '../../lib/utils';
