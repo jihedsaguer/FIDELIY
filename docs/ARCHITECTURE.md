@@ -122,7 +122,7 @@ The repository is aligned to a feature-owned backend structure under `backend/sr
 
 | Method and route | Request | Behavior |
 | --- | --- | --- |
-| `GET /merchants/business-setup` | None | Returns the authenticated merchant's setup status, business, and branches. |
+| `GET /merchants/business-setup` | None | Returns the authenticated merchant's setup status, business, and branches. `business` includes `publicQrId` (the id in the public join URL `/qr/:qrId`), which the merchant "My business QR" page (`/merchant/business-qr`) uses; `business` is `null` before setup. |
 | `POST /merchants/business-setup/business` | `{ "name": string }` | Creates the initial business. A retry returns the existing business without creating another. |
 | `PATCH /merchants/business-setup/business` | Partial business fields: `name`, `description`, `businessPhone`, `phonePubliclyDisplayed`, `logoUrl`, `theme` | Updates only the authenticated merchant's business. `theme` uses `{ "primaryColor": "#RRGGBB", "accentColor": "#RRGGBB" }`; nullable optional branding/contact fields may be cleared. |
 | `POST /merchants/business-setup/first-branch` | `{ "name": string, "address": string }` | Creates the first branch. Retries return that existing branch. |

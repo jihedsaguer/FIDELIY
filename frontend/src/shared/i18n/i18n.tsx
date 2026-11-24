@@ -523,6 +523,26 @@ const messages = {
     manageYourBranches: 'Gérer vos succursales',
     noSessionData: 'Aucune donnée de session disponible',
     failedToLoad: 'Échec du chargement des données',
+
+    /* Merchant business QR */
+    businessQr: "Mon QR d'entreprise",
+    businessQrDescription: 'Afficher, télécharger et imprimer le code QR que vos clients scannent',
+    businessQrSubtitle: 'Vos clients scannent ce code pour rejoindre votre programme de fidélité.',
+    businessQrImageAlt: 'Code QR pour rejoindre le programme de fidélité de',
+    businessQrUrlLabel: "Lien d'adhésion",
+    businessQrCopy: 'Copier le lien',
+    businessQrCopied: 'Lien copié',
+    businessQrCopyFailed: 'Copie impossible. Sélectionnez le lien et copiez-le manuellement.',
+    businessQrDownloadPng: 'Télécharger en PNG',
+    businessQrDownloadSvg: 'Télécharger en SVG',
+    businessQrPrint: "Imprimer l'affiche",
+    businessQrPrintHint: "Pour enregistrer l'affiche en PDF, choisissez « Enregistrer au format PDF » dans la fenêtre d'impression.",
+    businessQrPosterCta: 'Scannez pour rejoindre notre programme de fidélité',
+    businessQrPosterHint: "Ouvrez l'appareil photo de votre téléphone et pointez-le vers le code.",
+    businessQrNoProgram: 'Aucun programme actif : vos clients ne peuvent pas encore rejoindre.',
+    businessQrGoToPrograms: 'Aller aux programmes',
+    businessQrLoadError: "Impossible de charger votre code QR d'entreprise.",
+    businessQrLocalOriginWarning: "Cette adresse ne s'ouvre que sur cet appareil ou votre réseau local, pas sur le téléphone de vos clients. N'imprimez pas et ne partagez pas ce code : ouvrez FIDELIY depuis son adresse publique sécurisée (https).",
   },
   ar: {
     /* Brand & Footer */
@@ -1042,10 +1062,44 @@ const messages = {
     failedToLoadMembership: 'فشل في تحميل العضوية',
     membershipNotFound: 'العضوية غير موجودة',
     notFound: 'غير محود',
+
+    /* Merchant business QR */
+    businessQr: 'رمز QR متاع المحل',
+    businessQrDescription: 'شوف، نزّل واطبع رمز QR اللي يسكانيوه الكليان متاعك',
+    businessQrSubtitle: 'الكليان يسكانيو هالكود باش يدخلو لبرنامج الوفاء متاعك.',
+    businessQrImageAlt: 'رمز QR باش تدخل لبرنامج الوفاء متاع',
+    businessQrUrlLabel: 'رابط التسجيل',
+    businessQrCopy: 'انسخ الرابط',
+    businessQrCopied: 'الرابط تنسخ',
+    businessQrCopyFailed: 'ما نجمناش ننسخو. اختار الرابط وانسخو بيدك.',
+    businessQrDownloadPng: 'نزّل PNG',
+    businessQrDownloadSvg: 'نزّل SVG',
+    businessQrPrint: 'اطبع الأفيش',
+    businessQrPrintHint: 'باش تسجّل الأفيش PDF، اختار «Enregistrer au format PDF» ولا «Save as PDF» في شبّاك الطباعة.',
+    businessQrPosterCta: 'سكاني الكود وادخل لبرنامج الوفاء متاعنا',
+    businessQrPosterHint: 'حلّ الكاميرا متاع تليفونك ووجّهها للكود.',
+    businessQrNoProgram: 'ما فماش برنامج خدّام: الكليان ما ينجموش يدخلو توّا.',
+    businessQrGoToPrograms: 'روح للبرامج',
+    businessQrLoadError: 'ما نجمناش نحمّلو رمز QR متاع المحل.',
+    businessQrLocalOriginWarning: 'هالعنوان ما يتحلّش كان على هالجهاز ولا الريزو المحلي، موش على تليفونات الكليان. ما تطبعش وما تبعثش هالكود: حلّ FIDELIY من العنوان العمومي المؤمّن (https).',
   },
 } as const;
 
 export type MessageKey = keyof (typeof messages)['fr'];
+
+/**
+ * Reads a key in a specific locale, independent of the current UI locale
+ * (e.g. bilingual print material). Components should normally use `useI18n().t`.
+ */
+export function translate(locale: Locale, key: MessageKey): string {
+  return messages[locale][key];
+}
+
+/** Keys defined for a locale (used to check that both catalogues match). */
+export function messageKeys(locale: Locale): string[] {
+  return Object.keys(messages[locale]);
+}
+
 type I18nValue = {
   locale: Locale;
   setLocale: (locale: Locale) => void;

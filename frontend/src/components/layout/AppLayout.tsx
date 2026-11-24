@@ -51,7 +51,7 @@ function MerchantBottomNav() {
     `${itemClasses} ${isActive ? 'active text-[var(--brand)]' : 'text-[var(--text-muted)] hover:text-[var(--brand)]'}`;
 
   return (
-    <div className="md:hidden">
+    <div className="md:hidden print:hidden">
       <nav className="bottom-nav" aria-label={t('merchantSpace')}>
         <NavLink to={paths.merchantDashboard} end className={linkClasses}>
           <LayoutDashboard className="w-5 h-5" />
@@ -87,15 +87,15 @@ function MerchantLayoutWithScanner() {
     <>
       <div className="relative min-h-screen bg-[var(--surface)]">
         <Sidebar workspace="merchant" onSignOut={() => signOut()} />
-        <div className="ml-0 md:ml-16 lg:ml-64 transition-all duration-300">
-          <header className="sticky top-0 z-10 bg-[var(--surface)] border-b border-[var(--border)]">
+        <div className="ml-0 md:ml-16 lg:ml-64 print:ml-0 transition-all duration-300">
+          <header className="sticky top-0 z-10 bg-[var(--surface)] border-b border-[var(--border)] print:hidden">
             <div className="flex items-center justify-end h-16 px-4 md:px-6 lg:px-8">
               <div className="flex items-center gap-2">
                 <LanguageSwitcher />
               </div>
             </div>
           </header>
-          <main className="p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-6 lg:p-8" id="main-content">
+          <main className="p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-6 lg:p-8 print:p-0" id="main-content">
             <Outlet />
           </main>
         </div>

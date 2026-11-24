@@ -13,6 +13,7 @@ import {
   X,
   LogOut,
   MoreHorizontal,
+  Printer,
   ChevronDown,
   ChevronUp,
   User,
@@ -29,6 +30,7 @@ const merchantMainNavItems = [
 
 const merchantMoreItems = [
   { to: paths.merchantBusinessProfile, labelKey: 'businessProfile', icon: Building2 },
+  { to: paths.merchantBusinessQr, labelKey: 'businessQr', icon: Printer },
   { to: paths.merchantBranches, labelKey: 'branches', icon: Store },
   { to: paths.merchantSettings, labelKey: 'settings', icon: User },
 ] as const;
@@ -86,7 +88,7 @@ export function Sidebar({ workspace, onSignOut }: SidebarProps) {
       )}
 
       <aside
-        className={`fixed left-0 top-0 bottom-0 z-[100] bg-[var(--surface)] border-r border-[var(--border)] transition-all duration-300 ease-in-out ${
+        className={`print:hidden fixed left-0 top-0 bottom-0 z-[100] bg-[var(--surface)] border-r border-[var(--border)] transition-all duration-300 ease-in-out ${
           isCollapsed ? 'w-16' : 'w-64'
         } ${isMobile && isCollapsed ? '-translate-x-full' : 'translate-x-0'}`}
         aria-label={t('merchantSpace')}

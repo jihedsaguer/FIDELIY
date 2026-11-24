@@ -4,6 +4,8 @@ export interface BusinessSetup {
   status: BusinessSetupStatus;
   business: {
     id: string;
+    /** Public id encoded in the business join QR (`/qr/:qrId`). */
+    publicQrId: string;
     name: string;
     description: string | null;
     branchCount: number;
