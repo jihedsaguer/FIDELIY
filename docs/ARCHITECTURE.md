@@ -24,7 +24,7 @@ FIDELIY is organized as a modular monolith with clear separation between fronten
                │ SQL + RLS
 ┌──────────────▼─────────────┐
 │   PostgreSQL Database      │
-│ (Docker dev, Neon planned) │
+│ (Docker 16 dev, Neon 18)   │
 └─────────────────────────────┘
 ```
 
@@ -310,15 +310,16 @@ Rules: DECISIONS #15. All routes use `MerchantGuard`; the business is always der
 - All state in PostgreSQL (via Better Auth)
 - Horizontal scaling: Deploy multiple NestJS instances behind load balancer
 
-### Database Connection Pooling
-- PgBouncer for connection pooling (Phase 2 consideration)
-- Development: Single connection pool per NestJS instance
-- Production: Shared connection pool across instances
+### Release 1 Deployment (DECISIONS #22; setup in README "Deployment")
+- Browser -> Cloudflare Worker `fideliy` (workers.dev): serves the SPA (assets with SPA fallback) and proxies `/api/*` to the backend (`frontend/worker/index.ts`), so the browser sees one origin and Better Auth cookies stay first-party. `BETTER_AUTH_URL` and `FRONTEND_URL` are both the Worker URL.
+- Backend: one Render free web service from `backend/Dockerfile` (`runtime` stage), health check `GET /api/health`; sleeps when idle; local logo storage is ephemeral there.
+- Database: Neon PostgreSQL 18; the app uses the pooled connection string, migrations the direct one.
+- Pipeline: GitHub Actions `CI` then `Deploy` on push to `main` (migrate -> Render -> Worker -> smoke checks); no staging, no PR previews.
+- Smoke/pilot only: the Neon owner role is not subject to RLS (DATABASE.md section 4), so no real tenant data until RLS hardening.
 
-### Frontend Deployment
-- Cloudflare Pages for static hosting (Phase 1A consideration)
-- Automatic CDN for assets
-- Previews for PR testing
+### Database Connection Pooling
+- One `pg` pool per NestJS instance (10 s connection timeout for Neon cold starts), connected through Neon's pooled endpoint in production
+- A separate PgBouncer layer is a Phase 2 consideration
 
 ## 8. Known Architectural Constraints & Trade-Offs
 
@@ -327,7 +328,7 @@ Rules: DECISIONS #15. All routes use `MerchantGuard`; the business is always der
 | Single monolith (no microservices) | Harder to scale individual services | Phase 2: Extract services if needed |
 | Phone number as primary customer ID | Phone changes require account migration | Rare operation; handled via update flow |
 | RLS at DB level only | Application layer also needs guards | Defense-in-depth approach; both layers enforced |
-| Docker PostgreSQL locally, Neon planned for deployment | Neon behaviour (pooling, connection limits, roles) is not yet exercised | Standard PostgreSQL only; verify on Neon before deployment (DECISIONS #18) |
+| Docker PostgreSQL 16 locally, Neon PostgreSQL 18 deployed (CI on 18) | Neon behaviour (pooling, cold start, roles) not yet exercised by a real deployment; the Neon owner role is not subject to RLS | Standard PostgreSQL only; smoke/pilot data only until RLS hardening (DECISIONS #18, #22) |
 
 ## 9. Risks & Mitigation
 
@@ -341,6 +342,6 @@ Rules: DECISIONS #15. All routes use `MerchantGuard`; the business is always der
 
 ## 10. Pending Architecture Decisions
 
-- **Hosting Platform:** Render vs Railway vs other (Phase 1A decision)
+- **Hosting Platform:** resolved: Render (backend) + Cloudflare Worker (frontend), DECISIONS #22
 - **Connection Pooling:** PgBouncer implementation strategy (Phase 2 consideration)
 - **Caching Layer:** Redis for performance optimization (Phase 2 consideration)

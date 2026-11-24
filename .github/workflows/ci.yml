@@ -49,9 +49,11 @@ jobs:
         working-directory: backend
     # Throwaway database for this job only. The service user is a superuser,
     # so it bypasses RLS: these integration specs do NOT prove tenant isolation.
+    # PostgreSQL 18 matches production (Neon); local Docker stays on 16 because
+    # the existing dev volumes hold PostgreSQL 16 data.
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_USER: fideliy_ci
           POSTGRES_PASSWORD: ci-dummy-password

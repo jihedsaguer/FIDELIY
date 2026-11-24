@@ -515,6 +515,23 @@ merchant_accounts (capability)
 
 ---
 
+### 22. Release 1 Deployment: Neon + Render + Cloudflare Worker via GitHub Actions
+
+**Date:** 2026-11-24
+
+**Decision:**
+1. **Database:** Neon, PostgreSQL 18 (18.7 verified on Neon). CI runs PostgreSQL 18 too; local Docker stays on 16 (existing volumes hold 16 data). The backend uses the pooled connection string; migrations use the direct one (`NEON_MIGRATION_DATABASE_URL`, `sslmode=verify-full`). Amends #18 ("Neon planned").
+2. **Backend:** Render free web service built from `backend/Dockerfile` (`runtime` stage), health check `/api/health`, Render auto-deploy off. Free-tier sleep, monthly hour limit and ephemeral logo storage are accepted for this stage.
+3. **Frontend:** Cloudflare Worker `fideliy` on workers.dev (no custom domain), serving the SPA and proxying `/api/*` to Render so auth cookies stay first-party; `BACKEND_ORIGIN` is passed at deploy time.
+4. **Pipeline:** GitHub Actions only (Cloudflare Workers Builds is disconnected). One environment `production`, no staging, no required reviewer: workflow `Deploy` runs after `CI` succeeds on a push to `main` (or manually from `main`) in the order migrate Neon -> Render deploy -> Worker deploy -> smoke checks. Migrations are forward-only and must stay compatible with the previous backend version.
+5. **Use:** smoke/pilot only, no real merchant or customer data until RLS hardening (least-privilege application role, missing merchant write policies per #21 item 7). The Neon owner role bypasses RLS (`docs/DATABASE.md` section 4).
+
+**Resolves:** pending validation V2 (hosting platform).
+
+**Status:** APPROVED (user, 2026-11-24)
+
+---
+
 ## PROPOSED DECISIONS (Awaiting Confirmation)
 
 ### P1: Eight-Module NestJS Architecture
@@ -590,6 +607,8 @@ const createCustomerSchema = z.object({
 ---
 
 ### V2: Production Hosting Platform
+
+> **Resolved (2026-11-24):** Render (backend) and Cloudflare Workers (frontend), recorded in #22.
 
 **Status:** ⏳ **PENDING**
 

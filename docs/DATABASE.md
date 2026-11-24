@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-FIDELIY uses PostgreSQL with row-level security (RLS) to enforce multi-tenant data isolation. Drizzle ORM provides type-safe database abstraction with full TypeScript support. Local development uses Docker PostgreSQL 16; Neon is the planned deployment database (DECISIONS #18). Only standard PostgreSQL features are used.
+FIDELIY uses PostgreSQL with row-level security (RLS) to enforce multi-tenant data isolation. Drizzle ORM provides type-safe database abstraction with full TypeScript support. Local development uses Docker PostgreSQL 16; the deployment database is Neon PostgreSQL 18, and CI also runs 18 (DECISIONS #18, #22). Only standard PostgreSQL features are used.
 
 ## 2. Core Entities & Relationships
 
@@ -305,6 +305,8 @@ Disabling Compose Bake avoids its `.env` parser rejecting a UTF-8 BOM in the cur
 
 The current local development database role is a PostgreSQL superuser and bypasses RLS. RLS policies are therefore not effectively enforced for backend connections in this environment. Do not introduce real tenant data or deploy with this role; establish and verify a least-privilege application role before either.
 
+The same applies to the Neon deployment (DECISIONS #22): the backend and the migrations connect as the Neon owner role, which owns the tables (no migration uses `FORCE ROW LEVEL SECURITY`), so RLS does not apply to it. The deployment is therefore a smoke/pilot deployment without real tenant data until a least-privilege application role exists and the missing merchant write policies (DECISIONS #21 item 7) are added and verified.
+
 ## 5. Transaction Isolation for Loyalty Operations
 
 ### Earning Transaction (Atomic)
@@ -396,8 +398,8 @@ npx drizzle-kit generate
 npm run db:migrate
 ```
 
-### Deployment (Neon, planned)
-Apply the same reviewed forward-only migrations with the existing runner (`npm run db:migrate --prefix backend`) with `DATABASE_URL` pointing at the target database. `db:generate` runs `drizzle-kit generate:pg`. No `migrate:prod` script and no Neon-specific code exist yet.
+### Deployment (Neon)
+The `Deploy` GitHub Actions workflow applies the same reviewed forward-only migrations with the existing runner (`npm run db:migrate --prefix backend`), `DATABASE_URL` set from the secret `NEON_MIGRATION_DATABASE_URL` (Neon **direct** connection string; no `.env` in CI), before deploying the backend. The running backend uses the **pooled** connection string. Migrations are never reversed, so each one must stay compatible with the previously deployed backend. `db:generate` runs `drizzle-kit generate:pg`. No Neon-specific code exists. All 17 migrations were verified on PostgreSQL 18.7 (`postgres:18-alpine`) on 2026-11-24.
 
 ## 8. Backup & Disaster Recovery
 
@@ -405,8 +407,8 @@ Apply the same reviewed forward-only migrations with the existing runner (`npm r
 - Data lives in the Docker volume `postgres_data`; there are no automated backups.
 - Use `pg_dump` for manual exports. `docker compose down -v` destroys the volume.
 
-### Deployment (Neon, planned)
-- Backups and point-in-time recovery are to be configured when the Neon project is created.
+### Deployment (Neon)
+- Backups and point-in-time recovery: Neon project settings (not verified or documented here yet).
 - Targets from `docs/PRODUCT.md` (RTO < 1 hour, RPO < 15 minutes) are not yet verified.
 
 ## 9. Local PostgreSQL vs Neon
@@ -415,9 +417,13 @@ Apply the same reviewed forward-only migrations with the existing runner (`npm r
 - `postgres:16-alpine` from the root `docker-compose.yml`
 - The local role is a superuser with `BYPASSRLS` (see Local Docker Development)
 
-### Neon (planned deployment)
-- Serverless PostgreSQL with full PostgreSQL compatibility
-- Use a least-privilege application role that does not bypass RLS
+### Neon (deployment)
+- Serverless PostgreSQL 18 (18.7); scales to zero when idle, so the first connection after idle is slower (pool connection timeout 10 s)
+- App: pooled connection string (Render `DATABASE_URL`); migrations: direct connection string (GitHub secret `NEON_MIGRATION_DATABASE_URL`)
+- Currently the owner role, which is not subject to RLS (section 4): smoke/pilot only. Required before real data: a least-privilege application role that does not bypass RLS
+
+### CI
+- `postgres:18-alpine` service (`.github/workflows/ci.yml`), superuser, so integration specs there do not prove tenant isolation either
 
 ### Portability strategy
 - **Schema:** Drizzle-managed; no provider-specific extensions
@@ -425,10 +431,10 @@ Apply the same reviewed forward-only migrations with the existing runner (`npm r
 - **RLS:** standard PostgreSQL
 
 ### Migration path to Neon
-1. Create the Neon project and apply all migrations
-2. Test against a staging Neon database
-3. Verify RLS with a non-bypass role
-4. Point `DATABASE_URL` at Neon
+1. Create the Neon project and apply all migrations (automated by the `Deploy` workflow)
+2. Smoke-test the deployment (no staging database; DECISIONS #22)
+3. Before real data: create a least-privilege application role, add the missing RLS policies and verify RLS with that role
+4. Point the Render `DATABASE_URL` at that role's pooled connection string
 
 ## 10. Performance Considerations
 
