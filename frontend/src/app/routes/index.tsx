@@ -6,7 +6,7 @@ import { AppLayout } from '../../components/layout/AppLayout';
 import { ProtectedRoute } from './RouteGuards';
 import { paths } from './paths';
 
-const HomePage = lazy(() => import('../../features/auth/pages/HomePage'));
+const LandingPage = lazy(() => import('../../features/landing/pages/LandingPage'));
 const CustomerLoginPage = lazy(() => import('../../features/auth/pages/CustomerLoginPage'));
 const MerchantAuthPage = lazy(() => import('../../features/auth/pages/MerchantAuthPage'));
 const CustomerDashboardPage = lazy(() => import('../../features/customer/pages/CustomerDashboardPage'));
@@ -42,7 +42,7 @@ export default function AppRoutes() {
       <Suspense fallback={<PublicLayout><LoadingPanel>Loading page…</LoadingPanel></PublicLayout>}>
         <Routes>
           {/* Public routes */}
-          <Route path={paths.home} element={<HomePage />} />
+          <Route path={paths.home} element={<LandingPage />} />
           <Route path={paths.customerLogin} element={<CustomerLoginPage />} />
           <Route path={paths.merchantLogin} element={<MerchantAuthPage mode="login" />} />
           <Route path={paths.merchantRegister} element={<MerchantAuthPage mode="register" />} />

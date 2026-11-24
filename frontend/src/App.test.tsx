@@ -26,10 +26,11 @@ function renderRoute(path: string, backend = createMockBackend()) {
 }
 
 describe('application routes and guards', () => {
-  it('renders the public home page and login links', async () => {
+  it('renders the public landing page with its register and login links', async () => {
     renderRoute('/');
-    expect(await screen.findByText('Your loyalty,')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /I’m a merchant/ })).toHaveAttribute('href', '/merchant/login');
+    expect(await screen.findByRole('heading', { level: 1, name: /Vos clients reviennent\./ })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Créer mon programme' })[0]).toHaveAttribute('href', '/merchant/register');
+    expect(screen.getAllByRole('link', { name: 'Connexion' })[0]).toHaveAttribute('href', '/merchant/login');
   });
 
   it('does not load a merchant profile before an authenticated session exists', async () => {
