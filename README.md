@@ -108,6 +108,15 @@ The `Deploy` workflow fails early, printing only the names, if any of them is em
 
 **Free-tier caveats:** Render free services sleep after ~15 minutes without traffic (first request then takes up to about a minute) and share 750 instance hours per month per workspace; the Render filesystem is ephemeral, so uploaded business logos are lost on every deploy or restart; Neon scales to zero (first query after idle is slower; the pool timeout is 10 s). Neon runs PostgreSQL 18 (CI too), local Docker stays on 16.
 
+### Keep-alive
+
+A Cloudflare Workers Cron Trigger (`triggers.crons` in `frontend/wrangler.jsonc`, `*/10 * * * *`) runs the Worker's `scheduled` handler every 10 minutes. It sends one `GET ${BACKEND_ORIGIN}/api/health` (user-agent `fideliy-keepalive`, no cookies, 60 s timeout) so the Render free service does not sleep; failures are logged as one short line in the Worker logs and never retried. It is deployed with the Worker by the `Deploy` workflow (no extra secret). A Worker cron was chosen over a GitHub Actions `schedule`, which is best-effort (runs can be delayed past Render's 15-minute idle limit) and is disabled after 60 days without repository activity.
+
+- **Turn it off:** set `"crons": []` in `frontend/wrangler.jsonc` and redeploy (or delete the cron in the Cloudflare dashboard, Worker -> Settings -> Triggers). Only deleting the key is not enough: `wrangler deploy` then leaves the deployed schedule in place.
+- **Hours:** Render free gives 750 instance hours per month per workspace; one always-on service uses about 744 h in a 31-day month, so this fits **one** free service only.
+- The pings count as traffic and keep the backend awake; `/api/health` does not query the database, so Neon still scales to zero.
+- Worker cron timing is best-effort (usually within about a minute). This is not a substitute for a paid always-on instance; if in doubt, the owner should check Render's terms for the free plan.
+
 ## Documentation
 
 - Product scope: `docs/PRODUCT.md`
