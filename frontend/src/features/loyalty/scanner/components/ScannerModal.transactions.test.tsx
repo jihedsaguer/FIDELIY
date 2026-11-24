@@ -8,18 +8,12 @@ import { ScannerModal } from './ScannerModal';
 // jsdom has no getUserMedia: replace the camera hook with inert, stable callbacks.
 const cameraMock = vi.hoisted(() => ({
   videoRef: { current: null },
-  streamRef: { current: null },
-  codeReaderRef: { current: null },
-  isScanning: false,
-  permissionRequested: false,
-  cameraError: undefined,
-  requestCameraPermission: async () => undefined,
-  startScanning: async () => undefined,
-  stopCamera: () => undefined,
-  resetCamera: () => undefined,
+  start: async () => undefined,
+  stop: () => undefined,
 }));
 
-vi.mock('../hooks/useCamera', () => ({
+vi.mock('../hooks/useCamera', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../hooks/useCamera')>()),
   useCamera: () => cameraMock,
 }));
 
