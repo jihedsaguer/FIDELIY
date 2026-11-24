@@ -1,6 +1,6 @@
 # FIDELIY — Implementation Status
 
-Last updated: 2026-11-24 (Worker keep-alive cron). Facts marked **[verified]** were checked in the repo/commands; **[reported]** come from prior agent/user reports.
+Last updated: 2026-11-24 (Public landing page). Facts marked **[verified]** were checked in the repo/commands; **[reported]** come from prior agent/user reports.
 
 ## Stack (from repo)
 React 19 + Vite + TS + Tailwind + Redux Toolkit (`frontend/`); NestJS + Drizzle + PostgreSQL + Better Auth (`backend/`, feature-based under `backend/src/features`); Docker Postgres locally (`docker-compose.yml`), Neon later. Root `package.json` scripts: `dev`, `build`, `test` (backend only).
@@ -60,7 +60,7 @@ Claude-only setup: `CLAUDE.md`, `.claude/rules/{backend,frontend}.md`, `.claude/
 ## Known gaps carried from deleted reports (re-verified in source 2026-11-21)
 - Resolved 2026-11-22: the customer dashboard no longer uses hardcoded thresholds; the membership API returns balance and rewards (see Part C).
 - The programmes form builds one reward threshold per type although the backend and product rules allow several (`MerchantProgramsPage.tsx`).
-- Resolved: `frontend/index.html` still has a static `lang="en"`, but `I18nProvider` sets `document.documentElement.lang` (and `dir`) from the locale at runtime.
+- Resolved: `frontend/index.html` has a static `lang="fr"` since 2026-11-24 (was `en`); `I18nProvider` sets `document.documentElement.lang` (and `dir`) from the locale at runtime.
 - Manual keyboard, mobile and RTL accessibility testing is not recorded.
 - Backend startup (`validateSMSProviderForProduction`) throws in production when `SMS_PROVIDER` is `mock` (the default). Reconciled by configuration 2026-11-23: production sets `SMS_PROVIDER=none` (`.env.example`, `docker-compose.prod.yml`); the guard itself is unchanged.
 - `frontend/src/styles/global.css` is unused (only `globals.css` is imported); `frontend/components.json` is leftover shadcn config; `backend/src/features/programs/programs.service.ts.clean` and `.corrupted` are stray copies.
@@ -169,6 +169,7 @@ First: apply migration 0015 to the dev database, set `CUSTOMER_QR_SECRET`, and e
 ## Next task
 - After the next deploy: confirm the keep-alive cron in the Cloudflare dashboard and the 10-minute requests in Render logs (section above).
 - Before printing real posters: translate and restyle the public `/qr/:qrId` page and revisit the public lookup/join exposure (business QR follow-ups a and b above); print-preview and phone-scan check of the business QR on the deployed origin.
+- Landing page: browser pass at 390/820/1280px in fr and ar (RTL, keyboard, reduced motion, axe/Lighthouse, real contrast and font loading), native-speaker review of the Darija copy, owner review of the estimator assumptions.
 - **RLS hardening BEFORE any real merchant data:** least-privilege application role on Neon (no BYPASSRLS, not table owner), missing merchant write policies (DECISIONS #21 item 7), verify isolation with that role, then switch the Render `DATABASE_URL`.
 - First real deployment: user adds `RENDER_API_KEY`, `RENDER_SERVICE_ID`, `BACKEND_ORIGIN`, creates the Render service (README "Deployment"), then runs `Deploy`; check cookies/login through the Worker and the client IP.
 - After the test deployment: rotate the credentials that were shared in chat (Cloudflare API token, R2 keys, Neon password).
