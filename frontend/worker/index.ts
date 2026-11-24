@@ -7,6 +7,11 @@
  * (`wrangler deploy --var BACKEND_ORIGIN:<https url>`), never hardcoded.
  * Local mimic: `frontend/nginx.conf` (docker-compose.prod.yml).
  *
+ * Keep-alive: the `scheduled` handler runs on the cron trigger in
+ * `wrangler.jsonc` (every 10 minutes) and sends one GET to
+ * `${BACKEND_ORIGIN}/api/health` so the Render free service does not sleep.
+ * It does not use ASSETS or the proxy path and never throws.
+ *
  * Trust model: the backend trusts `x-client-ip` (rate limits, Better Auth IP
  * headers) only because this Worker deletes any client-supplied value and
  * re-sets it from CF-Connecting-IP. Anyone calling the onrender.com URL
@@ -21,7 +26,10 @@ export interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> };
 }
 
-const CLIENT_FORWARDING_HEADERS = ['x-client-ip', 'x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto'];
+/** A Render free cold start can take about a minute. */
+const KEEPALIVE_TIMEOUT_MS = 60_000;
+
+const CLIENT_FORWARDING_HEADERS =['x-client-ip', 'x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto'];
 
 function isApiPath(pathname: string): boolean {
   return pathname === '/api' || pathname.startsWith('/api/');
@@ -62,7 +70,55 @@ async function proxyToBackend(request: Request, origin: string): Promise<Respons
   });
 }
 
+/** Minimal hand-written subsets of the Workers runtime types (no @cloudflare/workers-types). */
+export interface ScheduledController {
+  readonly cron: string;
+  readonly scheduledTime: number;
+  noRetry(): void;
+}
+
+export interface ExecutionContext {
+  waitUntil(promise: Promise<unknown>): void;
+  passThroughOnException(): void;
+}
+
+/**
+ * Never throws. Logs one short line on failure (status or error name only),
+ * never the origin, headers or body.
+ */
+async function pingBackendHealth(origin: string): Promise<void> {
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), KEEPALIVE_TIMEOUT_MS);
+  try {
+    // No cookie or credential headers: the backend session middleware then
+    // skips session validation, so the ping never touches the database.
+    const response = await fetch(`${origin}/api/health`, {
+      method: 'GET',
+      headers: { 'user-agent': 'fideliy-keepalive' },
+      redirect: 'manual',
+      signal: abort.signal,
+    });
+    // Release the connection; the body itself is not needed.
+    await response.body?.cancel().catch(() => {});
+    if (!response.ok) console.warn(`keepalive failed: HTTP ${response.status}`);
+  } catch (error) {
+    const reason = abort.signal.aborted ? 'timeout' : error instanceof Error ? error.name : 'unknown error';
+    console.warn(`keepalive failed: ${reason}`);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export default {
+  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    const origin = backendOrigin(env.BACKEND_ORIGIN);
+    if (!origin) {
+      console.warn('keepalive skipped: BACKEND_ORIGIN is not a valid https URL');
+      return;
+    }
+    ctx.waitUntil(pingBackendHealth(origin));
+  },
+
   async fetch(request: Request, env: Env): Promise<Response> {
     const { pathname } = new URL(request.url);
     if (!isApiPath(pathname)) return env.ASSETS.fetch(request);

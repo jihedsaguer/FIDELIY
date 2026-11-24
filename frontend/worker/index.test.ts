@@ -168,6 +168,147 @@ describe('worker /api proxy', () => {
   });
 });
 
+describe('worker scheduled keep-alive', () => {
+  const controller = { cron: '*/10 * * * *', scheduledTime: 0, noRetry: () => {} };
+  let waitUntil: ReturnType<typeof vi.fn>;
+
+  function ctx() {
+    waitUntil = vi.fn();
+    return { waitUntil: waitUntil as unknown as (promise: Promise<unknown>) => void, passThroughOnException: () => {} };
+  }
+
+  /** Runs the handler and awaits the promise it handed to ctx.waitUntil. */
+  async function runScheduled(overrides: Partial<Env> = {}): Promise<void> {
+    await worker.scheduled(controller, env(overrides), ctx());
+    expect(waitUntil).toHaveBeenCalledTimes(1);
+    await waitUntil.mock.calls[0][0];
+  }
+
+  it('pings the backend health route once with GET, the keep-alive user-agent and no cookie', async () => {
+    await runScheduled();
+
+    const { url, init, headers } = forwarded();
+    expect(url).toBe(`${BACKEND}/api/health`);
+    expect(init.method).toBe('GET');
+    expect(init.redirect).toBe('manual');
+    expect(headers.get('user-agent')).toBe('fideliy-keepalive');
+    expect(headers.has('cookie')).toBe(false);
+    expect(headers.has('authorization')).toBe(false);
+    expect(assetsFetch).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['missing', undefined],
+    ['empty', ''],
+    ['not a URL', 'fideliy-backend.onrender.com'],
+    ['plain http', 'http://fideliy-backend.onrender.com'],
+  ])('does nothing but log one warning when BACKEND_ORIGIN is %s', async (_label, origin) => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await worker.scheduled(controller, env({ BACKEND_ORIGIN: origin }), ctx());
+
+    expect(upstream).not.toHaveBeenCalled();
+    expect(waitUntil).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledTimes(1);
+    if (origin) expect(String(warn.mock.calls[0][0])).not.toContain(origin);
+    warn.mockRestore();
+  });
+
+  /** A response whose body records whether it was released (cancelled or fully read). */
+  function trackedResponse(status: number): { response: Response; released: () => boolean } {
+    let released = false;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.enqueue(new TextEncoder().encode('{"status":"ok","secret":"s3cr3t"}'));
+        controller.close();
+        released = true;
+      },
+      cancel() {
+        released = true;
+      },
+    }, { highWaterMark: 0 });
+    return { response: new Response(body, { status }), released: () => released };
+  }
+
+  it('releases the response body on success without logging', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const tracked = trackedResponse(200);
+    upstream.mockResolvedValueOnce(tracked.response);
+
+    await runScheduled();
+
+    expect(tracked.released()).toBe(true);
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('logs one short line with the status on a non-2xx response, releases the body and does not throw', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const tracked = trackedResponse(500);
+    upstream.mockResolvedValueOnce(tracked.response);
+
+    await expect(runScheduled()).resolves.toBeUndefined();
+
+    expect(tracked.released()).toBe(true);
+    expect(warn).toHaveBeenCalledTimes(1);
+    const line = String(warn.mock.calls[0][0]);
+    expect(line).toBe('keepalive failed: HTTP 500');
+    warn.mockRestore();
+  });
+
+  it('logs only the error name when fetch rejects and does not throw', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    upstream.mockRejectedValueOnce(new TypeError(`connect failed to ${BACKEND} with token abc`));
+
+    await expect(runScheduled()).resolves.toBeUndefined();
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0][0])).toBe('keepalive failed: TypeError');
+    warn.mockRestore();
+  });
+
+  it('aborts a hanging request after 60 seconds, logs a timeout and does not throw', async () => {
+    vi.useFakeTimers();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    let signal: AbortSignal | undefined;
+    upstream.mockImplementationOnce(
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          signal = init.signal ?? undefined;
+          signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+        }),
+    );
+    try {
+      await worker.scheduled(controller, env(), ctx());
+      const settled = vi.fn();
+      const done = (waitUntil.mock.calls[0][0] as Promise<unknown>).then(settled);
+
+      await vi.advanceTimersByTimeAsync(59_000);
+      expect(signal?.aborted).toBe(false);
+      expect(settled).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1_000);
+      await done;
+      expect(signal?.aborted).toBe(true);
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(String(warn.mock.calls[0][0])).toBe('keepalive failed: timeout');
+    } finally {
+      warn.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it('clears the timeout once the ping completes', async () => {
+    vi.useFakeTimers();
+    try {
+      await runScheduled();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe('worker static assets', () => {
   it('serves non-/api paths from the ASSETS binding', async () => {
     const request = new Request(`${PUBLIC}/merchant/login`);

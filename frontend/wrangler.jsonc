@@ -15,5 +15,15 @@
     // Only these reach the Worker before assets; everything else is served
     // straight from assets (SPA fallback to index.html).
     "run_worker_first": ["/api", "/api/*"]
+  },
+  // Keep-alive: the Render free web service sleeps after ~15 minutes without
+  // traffic. This cron runs the Worker's `scheduled` handler every 10 minutes,
+  // which sends one GET to ${BACKEND_ORIGIN}/api/health. That route does not
+  // touch the database (no cookie is sent), so Neon can still scale to zero.
+  // To turn it off: set "crons": [] and redeploy (README "Keep-alive").
+  // Deleting the key is not enough: wrangler then leaves the deployed
+  // schedule untouched.
+  "triggers": {
+    "crons": ["*/10 * * * *"]
   }
 }
