@@ -525,6 +525,7 @@ merchant_accounts (capability)
 3. **Frontend:** Cloudflare Worker `fideliy` on workers.dev (no custom domain), serving the SPA and proxying `/api/*` to Render so auth cookies stay first-party; `BACKEND_ORIGIN` is passed at deploy time.
 4. **Pipeline:** GitHub Actions only (Cloudflare Workers Builds is disconnected). One environment `production`, no staging, no required reviewer: workflow `Deploy` runs after `CI` succeeds on a push to `main` (or manually from `main`) in the order migrate Neon -> Render deploy -> Worker deploy -> smoke checks. Migrations are forward-only and must stay compatible with the previous backend version.
 5. **Use:** smoke/pilot only, no real merchant or customer data until RLS hardening (least-privilege application role, missing merchant write policies per #21 item 7). The Neon owner role bypasses RLS (`docs/DATABASE.md` section 4).
+6. **Keep-alive (added 2026-11-24, user request):** a Cloudflare Workers Cron Trigger in the existing Worker (`*/10 * * * *`) GETs the backend `/api/health` so the Render free service does not sleep; chosen over a GitHub Actions `schedule` (best-effort, delayable past the 15-minute idle limit, disabled after 60 days of repository inactivity). Fits one free Render service only (750 h/month per workspace). Details: README "Keep-alive".
 
 **Resolves:** pending validation V2 (hosting platform).
 
