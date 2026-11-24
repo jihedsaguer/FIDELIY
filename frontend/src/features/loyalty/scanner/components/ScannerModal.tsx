@@ -22,7 +22,7 @@ import {
   RegistrationFormModal,
   RegistrationResultModal,
 } from './';
-import { useCamera } from '../hooks/useCamera';
+import { CameraStartError, useCamera, type CameraErrorKind } from '../hooks/useCamera';
 import { useScannerState } from '../hooks/useScannerState';
 import { useScannerBranch } from '../hooks/useScannerBranch';
 import { useIdempotencyKey } from '../hooks/useIdempotencyKey';
@@ -30,6 +30,15 @@ import { validatePurchaseAmount } from '../utils/amount';
 import { formatDeltas } from '../utils/transactionFormat';
 import { isRepeatConfirmationRequired, transactionErrorKey, readApiError } from '../utils/apiError';
 import { ConfirmDialog } from '../../../../components/ui/ConfirmDialog';
+
+// Messages for camera failures other than 'denied' (which shows the permission step).
+const CAMERA_ERROR_KEYS = {
+  insecure: 'cameraInsecureContext',
+  unsupported: 'cameraUnsupported',
+  'no-camera': 'cameraNotFound',
+  busy: 'cameraBusy',
+  unknown: 'cameraStartFailed',
+} as const satisfies Record<Exclude<CameraErrorKind, 'denied'>, string>;
 
 /**
  * ScannerModal - Main scanner dialog component
@@ -70,12 +79,7 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
   const branch = useScannerBranch(isOpen, defaultBranchId);
 
   // Camera management via custom hook
-  const {
-    videoRef,
-    startScanning,
-    stopCamera,
-    resetCamera,
-  } = useCamera();
+  const { videoRef, start: startCamera, stop: stopCamera } = useCamera();
 
   // API mutations
   const [resolveCustomer] = useResolveCustomerForTransactionMutation();
@@ -83,16 +87,13 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
   const [redeemReward] = useRedeemRewardMutation();
   const [registerCustomer] = useRegisterCustomerMutation();
 
-  // Permission tracking ref
-  const permissionRequestedRef = useRef(false);
-
   // `reset` and `handleScannedQr` are plain functions re-created on every render.
   // Effects read them through refs so that re-renders (e.g. typing in the manual
   // entry field) never re-run the open/close or camera effects.
   const resetRef = useRef<() => void>(() => undefined);
   const handleScannedQrRef = useRef<(qrText: string) => void>(() => undefined);
   const wasOpenRef = useRef(false);
-  const { goToPermission } = scanner;
+  const { goToPermission, goToError } = scanner;
 
   // Reset state only on the closed -> open transition; stop the camera on close.
   useEffect(() => {
@@ -101,7 +102,6 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
     if (isOpen) {
       if (wasOpen) return;
       resetRef.current();
-      permissionRequestedRef.current = false;
       earnKey.clear();
       redeemKey.clear();
     } else {
@@ -111,23 +111,28 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
     }
   }, [isOpen, stopCamera, earnKey.clear, redeemKey.clear]);
 
-  // Handle camera permission and scanning
+  // Run the camera while the modal is open on the 'scan' step; closing the modal, leaving
+  // the step or unmounting releases it (also correct under StrictMode's double effects:
+  // a stream that opens after its effect was cleaned up is released by the hook).
   useEffect(() => {
-    if (scanner.step !== 'scan' || !videoRef.current) return;
+    const video = videoRef.current;
+    if (!isOpen || scanner.step !== 'scan' || !video) return;
+    let cancelled = false;
 
-    const initializeScanning = async () => {
-      if (permissionRequestedRef.current) return;
-      permissionRequestedRef.current = true;
+    startCamera(video, (qrText) => {
+      if (!cancelled) handleScannedQrRef.current(qrText);
+    }).catch((err: unknown) => {
+      if (cancelled) return;
+      const kind = err instanceof CameraStartError ? err.kind : 'unknown';
+      if (kind === 'denied') goToPermission();
+      else goToError(t(CAMERA_ERROR_KEYS[kind]));
+    });
 
-      try {
-        await startScanning((qrText) => handleScannedQrRef.current(qrText));
-      } catch (err) {
-        goToPermission();
-      }
+    return () => {
+      cancelled = true;
+      stopCamera();
     };
-
-    initializeScanning();
-  }, [scanner.step, videoRef, startScanning, goToPermission]);
+  }, [isOpen, scanner.step, videoRef, startCamera, stopCamera, goToPermission, goToError, t]);
 
   // Handle successful QR scan
   function handleScannedQr(qrText: string) {
@@ -255,13 +260,11 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
   // Reset all state
   function reset() {
     stopCamera();
-    resetCamera();
     scanner.reset();
     setManualCredential('');
     setPurchaseAmountInput('');
     setAmountError(undefined);
     setEarnSuccess(undefined);
-    permissionRequestedRef.current = false;
   }
 
   // Keep the refs used by the effects pointing at the latest closures.
@@ -362,14 +365,15 @@ export function ScannerModal({ isOpen, onClose, branchId: defaultBranchId }: Sca
     }
   }
 
-  // Render the appropriate content based on current step
+  // Render the appropriate content based on current step. On the 'error' step the
+  // message is the camera failure, already shown by ScannerErrorState.
   const manualEntry = (
     <ManualCredentialEntry
       credential={manualCredential}
       onChange={setManualCredential}
       onSubmit={handleScanFromManual}
       isBusy={busy}
-      errorMessage={scanner.errorMessage}
+      errorMessage={scanner.step === 'error' ? undefined : scanner.errorMessage}
     />
   );
 

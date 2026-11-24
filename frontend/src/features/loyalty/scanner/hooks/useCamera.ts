@@ -1,169 +1,100 @@
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { BrowserQRCodeReader } from '@zxing/library';
-import { defaultCameraConfig } from '../types';
-import type { CameraConfig } from '../types';
 
 /**
- * Custom hook for managing camera lifecycle and QR scanning
- * 
- * Responsibilities:
- * - Camera permission request
- * - Camera stream initialization and cleanup
- * - QR code scanning using @zxing/library
- * - Error handling for camera access
+ * Camera + QR decoding for the merchant scanner.
+ *
+ * `start(video, onResult)` opens the rear camera by constraints (no device listing, which
+ * hides labels before permission) with a NEW reader each time, and reports the first decoded
+ * QR once, after releasing the camera. `stop()` releases the camera; it is idempotent.
+ * Failures reject with a `CameraStartError` whose `kind` the UI turns into a message.
  */
-export interface UseCameraResult {
-  videoRef: React.RefObject<HTMLVideoElement>;
-  streamRef: React.RefObject<MediaStream | null>;
-  codeReaderRef: React.RefObject<BrowserQRCodeReader | null>;
-  isScanning: boolean;
-  permissionRequested: boolean;
-  cameraError?: string;
-  requestCameraPermission: () => Promise<void>;
-  startScanning: (onScanResult: (result: string) => void) => Promise<void>;
-  stopCamera: () => void;
-  resetCamera: () => void;
+export type CameraErrorKind = 'insecure' | 'unsupported' | 'denied' | 'no-camera' | 'busy' | 'unknown';
+
+export class CameraStartError extends Error {
+  readonly kind: CameraErrorKind;
+
+  constructor(kind: CameraErrorKind) {
+    super(`camera: ${kind}`);
+    this.name = 'CameraStartError';
+    this.kind = kind;
+  }
 }
 
-/**
- * Custom hook for camera and QR scanning functionality
- */
-export function useCamera(config: CameraConfig = defaultCameraConfig): UseCameraResult {
+export interface UseCameraResult {
+  videoRef: React.RefObject<HTMLVideoElement>;
+  start: (video: HTMLVideoElement, onResult: (text: string) => void) => Promise<void>;
+  stop: () => void;
+}
+
+const SCAN_CONSTRAINTS: MediaStreamConstraints = {
+  audio: false,
+  video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+};
+
+function errorKind(name: string): CameraErrorKind {
+  switch (name) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+    case 'PermissionDeniedError':
+      return 'denied';
+    case 'NotFoundError':
+    case 'DevicesNotFoundError':
+    case 'OverconstrainedError':
+      return 'no-camera';
+    case 'NotReadableError':
+    case 'TrackStartError':
+    case 'AbortError':
+      return 'busy';
+    default:
+      return 'unknown';
+  }
+}
+
+export function useCamera(): UseCameraResult {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const codeReaderRef = useRef<BrowserQRCodeReader | null>(null);
-  const scanningRef = useRef(false);
-  const permissionRequestedRef = useRef(false);
-  
-  const [isScanning, setIsScanning] = useState(false);
-  const [permissionRequested, setPermissionRequested] = useState(false);
-  const [cameraError, setCameraError] = useState<string>();
+  // The reader of the current session; null when stopped.
+  const readerRef = useRef<BrowserQRCodeReader | null>(null);
 
-  // Initialize code reader when needed
-  useEffect(() => {
-    if (!videoRef.current) return;
-    
-    codeReaderRef.current = new BrowserQRCodeReader();
-    
-    return () => {
-      if (codeReaderRef.current) {
-        codeReaderRef.current.reset();
-      }
-    };
+  const stop = useCallback(() => {
+    const reader = readerRef.current;
+    readerRef.current = null;
+    reader?.reset();
   }, []);
 
-  /**
-   * Request camera permission from the user
-   */
-  const requestCameraPermission = useCallback(async () => {
-    if (permissionRequestedRef.current) return;
-    permissionRequestedRef.current = true;
-    setPermissionRequested(true);
+  const start = useCallback(async (video: HTMLVideoElement, onResult: (text: string) => void) => {
+    if (!window.isSecureContext) throw new CameraStartError('insecure');
+    if (!navigator.mediaDevices?.getUserMedia) throw new CameraStartError('unsupported');
+
+    stop();
+    const reader = new BrowserQRCodeReader();
+    readerRef.current = reader;
+    let done = false;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: config,
+      await reader.decodeFromConstraints(SCAN_CONSTRAINTS, video, (result) => {
+        // Per-frame decode failures (NotFound/Checksum/Format) arrive as errors: ignore them.
+        if (!result || done) return;
+        done = true;
+        reader.reset();
+        if (readerRef.current === reader) readerRef.current = null;
+        onResult(result.getText());
       });
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      streamRef.current = stream;
-      setCameraError(undefined);
     } catch (err) {
-      console.warn('Camera permission denied:', err);
-      setCameraError('Camera access denied. Please allow camera access to scan QR codes.');
-      throw err;
-    }
-  }, [config]);
-
-  /**
-   * Start the QR code scanning process
-   */
-  const startScanning = useCallback(async (onScanResult: (result: string) => void) => {
-    const video = videoRef.current;
-    const codeReader = codeReaderRef.current;
-    
-    if (!video || !codeReader) {
-      setCameraError('Camera not initialized');
-      return;
+      reader.reset();
+      if (readerRef.current === reader) readerRef.current = null;
+      const name = err instanceof Error ? err.name : 'UnknownError';
+      console.warn('Camera start failed:', name);
+      throw new CameraStartError(errorKind(name));
     }
 
-    try {
-      const videoDevices = await codeReader.listVideoInputDevices();
-      const backCamera = videoDevices.find((d: MediaDeviceInfo) => 
-        d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear'));
-      const deviceId = backCamera?.deviceId || videoDevices[0]?.deviceId;
-
-      if (!deviceId) {
-        setCameraError('No camera devices found');
-        return;
-      }
-
-      scanningRef.current = false;
-      setIsScanning(true);
-
-      await codeReader.decodeFromVideoDevice(
-        deviceId,
-        video,
-        (result, err) => {
-          if (result && !scanningRef.current) {
-            scanningRef.current = true;
-            setIsScanning(false);
-            onScanResult(result.getText());
-          }
-          if (err && err.name !== 'NotFoundException') {
-            console.warn('QR scan error:', err);
-          }
-        }
-      );
-    } catch (err) {
-      console.warn('QR scan initialization error:', err);
-      setCameraError('Camera initialization failed');
-      throw err;
-    }
-  }, []);
-
-  /**
-   * Stop the camera stream and clean up resources
-   */
-  const stopCamera = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-    scanningRef.current = false;
-    setIsScanning(false);
-  }, []);
-
-  /**
-   * Reset camera state completely
-   */
-  const resetCamera = useCallback(() => {
-    stopCamera();
-    setCameraError(undefined);
-    permissionRequestedRef.current = false;
-    setPermissionRequested(false);
-    
-    if (codeReaderRef.current) {
-      codeReaderRef.current.reset();
-      codeReaderRef.current = null;
-    }
-  }, [stopCamera]);
+    // Stopped (or restarted) while the stream was opening: release this late stream.
+    if (readerRef.current !== reader) reader.reset();
+  }, [stop]);
 
   return {
     videoRef: videoRef as React.RefObject<HTMLVideoElement>,
-    streamRef,
-    codeReaderRef,
-    isScanning,
-    permissionRequested,
-    cameraError,
-    requestCameraPermission,
-    startScanning,
-    stopCamera,
-    resetCamera,
+    start,
+    stop,
   };
 }
