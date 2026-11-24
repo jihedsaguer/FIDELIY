@@ -16,5 +16,6 @@ export const paths = {
   merchantCustomers: '/merchant/customers',
   merchantSettings: '/merchant/settings',
   merchantMore: '/merchant/more',
+  merchantBusinessQr: '/merchant/business-qr',
   publicQr: '/qr/:qrId',
 } as const;

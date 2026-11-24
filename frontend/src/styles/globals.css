@@ -1458,6 +1458,11 @@ footer {
   }
 }
 
+/* Printed pages (business QR poster): fixed margins, exact black-on-white QR. */
+@page {
+  margin: 15mm;
+}
+
 /* Loyalty card stamp-in (used via motion-safe:animate-[stamp-in_...]) */
 @keyframes stamp-in {
   0% { transform: scale(2.2) rotate(-14deg); opacity: 0; }

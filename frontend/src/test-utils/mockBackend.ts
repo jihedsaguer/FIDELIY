@@ -12,6 +12,7 @@ export function createPopulatedSetup(): BusinessSetup {
     status: 'in_progress',
     business: {
       id: 'business-1',
+      publicQrId: '00000000-0000-4000-8000-000000000001',
       name: 'Cafe FIDELIY',
       description: null,
       branchCount: 0,
@@ -92,6 +93,7 @@ export function createMockBackend(options: {
       setup.status = 'in_progress';
       setup.business = {
         id: 'business-1',
+        publicQrId: '00000000-0000-4000-8000-000000000001',
         name: String(body.name),
         description: null,
         branchCount: 0,

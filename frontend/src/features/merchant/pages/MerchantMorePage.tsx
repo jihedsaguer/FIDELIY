@@ -3,7 +3,7 @@ import { Button, Card, Section } from '../../../components/ui';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthProvider';
 import { paths } from '../../../app/routes/paths';
-import { Building2, Store, User, Users, LogOut } from 'lucide-react';
+import { Building2, Printer, Store, User, Users, LogOut } from 'lucide-react';
 
 export default function MerchantMorePage() {
   const { t } = useI18n();
@@ -32,6 +32,13 @@ export default function MerchantMorePage() {
       icon: Building2,
       title: t('businessProfile'),
       description: t('manageYourBusinessInformation'),
+    },
+    {
+      key: 'businessQr',
+      to: paths.merchantBusinessQr,
+      icon: Printer,
+      title: t('businessQr'),
+      description: t('businessQrDescription'),
     },
     {
       key: 'branches',
