@@ -18,7 +18,7 @@ Release 1 is in progress. Current state, verified facts and the next task are in
 |-------|-----------|
 | Frontend | React 19, Vite, TypeScript, Tailwind CSS 4, Redux Toolkit (RTK Query); in-repo UI components |
 | Backend | NestJS modular monolith, class-validator |
-| Database | PostgreSQL 16 (Docker locally), Drizzle ORM and `pg`; Neon planned for deployment |
+| Database | PostgreSQL 16 (Docker locally), PostgreSQL 18 on Neon (deployment) and in CI; Drizzle ORM and `pg` |
 | Authentication | Better Auth: phone number for customers, email and password for merchants |
 | Email | Resend |
 | SMS / OTP | Deferred to Release 2 |
@@ -76,6 +76,37 @@ npm run type-check --prefix frontend # tsc --noEmit
 ```
 
 Integration specs need a running, migrated PostgreSQL. The flags are listed in `docs/ROADMAP.md` (testing evidence) and each spec under `backend/test/`.
+
+## Deployment (Neon + Render + Cloudflare)
+
+Smoke/pilot deployment only: no real merchant data until the RLS hardening is done (`docs/DATABASE.md` section 4, DECISIONS #22).
+
+- **Browser** -> Cloudflare Worker `fideliy` on workers.dev (`frontend/worker/index.ts`): serves the SPA and proxies `/api/*`, so auth cookies stay first-party.
+- **Worker** -> Render web service (free tier), built from `backend/Dockerfile` (`runtime` stage).
+- **Backend** -> Neon PostgreSQL 18 through the **pooled** connection string; migrations use the **direct** one.
+- **GitHub Actions** deploys: `CI` (`.github/workflows/ci.yml`) on push to `main`, then `Deploy` (`.github/workflows/deploy.yml`): migrate Neon -> Render deploy (waits for `live` and `/api/health`) -> `wrangler deploy` -> smoke checks through the Worker.
+
+GitHub environment `production` (names only; values never in the repository):
+
+| Name | Kind | Value comes from |
+|------|------|------------------|
+| `NEON_MIGRATION_DATABASE_URL` | secret | Neon console, **direct** (non-pooled) connection string, `sslmode=verify-full` |
+| `RENDER_API_KEY` | secret | Render, Account settings -> API keys |
+| `RENDER_SERVICE_ID` | secret | Render service URL / settings (`srv-...`) |
+| `CLOUDFLARE_API_TOKEN` | secret | Cloudflare, API token with Workers edit rights |
+| `CLOUDFLARE_ACCOUNT_ID` | secret | Cloudflare dashboard |
+| `BACKEND_ORIGIN` | variable | Render service URL, `https://<service>.onrender.com` (no path) |
+| `FRONTEND_URL` | variable | Worker URL, `https://fideliy.<subdomain>.workers.dev` (no path) |
+
+The `Deploy` workflow fails early, printing only the names, if any of them is empty or a URL is not https.
+
+**Render service settings:** runtime Docker, root directory `backend` (Dockerfile `./Dockerfile`, default `runtime` stage), health check path `/api/health`, auto-deploy **Off** (only the workflow deploys). Environment variables: `NODE_ENV=production`, `DATABASE_URL` (Neon **pooled** string), `BETTER_AUTH_SECRET`, `CUSTOMER_QR_SECRET`, `BETTER_AUTH_URL` and `FRONTEND_URL` (both the Worker URL: the browser reaches auth through the Worker), `SMS_PROVIDER=none`. Do not set `PORT` (Render injects it) or `ALLOW_INSECURE_URLS_FOR_LOCAL_PROD`.
+
+**First deploy:** create the Neon project, the Render service (settings above, auto-deploy off) and add the secrets/variables; then merge to `main` (or run `Deploy` manually from `main`). Migrations run before the backend deploy, so the first run creates the schema.
+
+**Deploy / rollback:** every successful `CI` run on a push to `main` deploys that commit; `Deploy` can also be run manually from `main` with an optional `ref` (full SHA of a `main` commit) to redeploy an older version. Backend rollback: Render dashboard or a `ref` redeploy; Worker rollback: `npx wrangler rollback` in `frontend/`. The database is forward-only: migrations are never reversed, so each migration must stay compatible with the previous backend version.
+
+**Free-tier caveats:** Render free services sleep after ~15 minutes without traffic (first request then takes up to about a minute) and share 750 instance hours per month per workspace; the Render filesystem is ephemeral, so uploaded business logos are lost on every deploy or restart; Neon scales to zero (first query after idle is slower; the pool timeout is 10 s). Neon runs PostgreSQL 18 (CI too), local Docker stays on 16.
 
 ## Documentation
 

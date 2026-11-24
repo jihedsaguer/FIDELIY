@@ -1,0 +1,232 @@
+# FIDELIY production deploy (single environment, no staging; DECISIONS #22).
+# Runs after the `CI` workflow succeeds on a push to main, or manually.
+# Order: migrate Neon -> deploy backend on Render -> deploy Cloudflare Worker
+# (frontend + /api proxy) -> smoke checks. Any failing step stops the run.
+#
+# GitHub environment `production` (names only, never values):
+#   secret   CLOUDFLARE_API_TOKEN         Cloudflare API token (Workers deploy)
+#   secret   CLOUDFLARE_ACCOUNT_ID        Cloudflare account id
+#   secret   NEON_MIGRATION_DATABASE_URL  Neon DIRECT (non-pooled) URL, sslmode=verify-full
+#   secret   RENDER_API_KEY               Render API key
+#   secret   RENDER_SERVICE_ID            Render web service id (srv-...)
+#   variable BACKEND_ORIGIN               https://<service>.onrender.com (no path)
+#   variable FRONTEND_URL                 https://<worker>.workers.dev (no path)
+#
+# Rollback:
+#   - Backend: Render dashboard rollback, or run this workflow manually with
+#     `ref` = an older main commit (redeploys that backend and Worker).
+#   - Worker: `npx wrangler rollback` from frontend/ (or the Cloudflare dashboard).
+#   - Database: forward-only. Migrations are never reversed (also not by a
+#     `ref` redeploy), so every migration must stay compatible with the
+#     previously deployed backend version.
+#
+# The Render API calls below follow Render's public API docs (create deploy,
+# retrieve deploy); their exact response shapes were NOT exercised before the
+# first real run, so parsing is defensive and fails with a clear message.
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Optional full 40-character commit SHA on main to deploy (default: latest main). Migrations are not reversed."
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    env:
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || inputs.ref || github.sha }}
+      BACKEND_ORIGIN: ${{ vars.BACKEND_ORIGIN }}
+      FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - name: Validate configuration
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          NEON_MIGRATION_DATABASE_URL: ${{ secrets.NEON_MIGRATION_DATABASE_URL }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+        run: |
+          set +x
+          missing=""
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID NEON_MIGRATION_DATABASE_URL \
+                      RENDER_API_KEY RENDER_SERVICE_ID BACKEND_ORIGIN FRONTEND_URL; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing secrets/variables in the 'production' environment:$missing"
+            exit 1
+          fi
+          for name in BACKEND_ORIGIN FRONTEND_URL; do
+            if ! printf '%s' "${!name}" | grep -Eq '^https://[A-Za-z0-9.-]+(:[0-9]+)?/?$'; then
+              echo "::error::$name must be an https origin (https://host, no path)"
+              exit 1
+            fi
+          done
+          if ! printf '%s' "$DEPLOY_SHA" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "::error::Commit to deploy must be a full 40-character lowercase hex SHA"
+            exit 1
+          fi
+          echo "Deploying commit $DEPLOY_SHA"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check the commit is on main
+        run: |
+          if ! git merge-base --is-ancestor "$DEPLOY_SHA" origin/main; then
+            echo "::error::Commit $DEPLOY_SHA is not on main; refusing to deploy"
+            exit 1
+          fi
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      # Forward-only drizzle migrations over the DIRECT Neon URL (no .env in CI;
+      # migrate.ts reads DATABASE_URL from the environment).
+      - name: Migrate Neon
+        timeout-minutes: 10
+        env:
+          DATABASE_URL: ${{ secrets.NEON_MIGRATION_DATABASE_URL }}
+        run: |
+          npm ci --prefix backend
+          npm run db:migrate --prefix backend
+
+      # Render auto-deploy is OFF; this is the only trigger. Render builds
+      # backend/Dockerfile (runtime target) at DEPLOY_SHA.
+      - name: Deploy backend (Render)
+        timeout-minutes: 30
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+        run: |
+          set -euo pipefail
+          set +x
+          api="https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys"
+          umask 077
+          hdr="$(mktemp)"; resp="$(mktemp)"
+          trap 'rm -f "$hdr" "$resp"' EXIT
+          # Header read from a file so the key never appears in argv or logs.
+          printf 'Authorization: Bearer %s\n' "$RENDER_API_KEY" > "$hdr"
+
+          # Prints only the HTTP status and Render's `message` field (if any).
+          fail() {
+            local msg
+            msg="$(jq -r 'if type == "object" and (.message | type) == "string" then .message else "" end' "$resp" 2>/dev/null | head -c 300 || true)"
+            echo "::error::$1 (HTTP $2)${msg:+: $msg}"
+            exit 1
+          }
+
+          body="$(jq -nc --arg c "$DEPLOY_SHA" '{commitId: $c, clearCache: "do_not_clear"}')"
+          code="$(curl -sS -o "$resp" -w '%{http_code}' --max-time 60 -X POST "$api" \
+            -H @"$hdr" -H 'Accept: application/json' -H 'Content-Type: application/json' \
+            --data "$body")" || fail "Render create-deploy request failed" "none"
+          case "$code" in 200|201|202) ;; *) fail "Render create-deploy rejected" "$code" ;; esac
+          deploy_id="$(jq -r 'if type == "object" and (.id | type) == "string" then .id else "" end' "$resp" 2>/dev/null || true)"
+          if ! printf '%s' "$deploy_id" | grep -Eq '^[A-Za-z0-9_-]+$'; then
+            fail "Unexpected Render create-deploy response (no deploy id)" "$code"
+          fi
+          echo "Render deploy $deploy_id created"
+
+          deadline=$(( $(date +%s) + 20 * 60 ))
+          last="" errors=0
+          while :; do
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "::error::Render deploy $deploy_id not live after 20 minutes (last status: ${last:-unknown})"
+              exit 1
+            fi
+            sleep 15
+            code="$(curl -sS -o "$resp" -w '%{http_code}' --max-time 30 \
+              -H @"$hdr" -H 'Accept: application/json' "$api/$deploy_id")" || code="000"
+            if [ "$code" != "200" ]; then
+              errors=$((errors + 1))
+              echo "Render status poll returned HTTP $code ($errors/5)"
+              [ "$errors" -ge 5 ] && fail "Render status poll keeps failing" "$code"
+              continue
+            fi
+            errors=0
+            status="$(jq -r 'if type == "object" then (.status // .deploy.status // "") else "" end' "$resp" 2>/dev/null || true)"
+            [ -z "$status" ] && fail "Unexpected Render deploy response (no status)" "$code"
+            if [ "$status" != "$last" ]; then echo "Render deploy status: $status"; last="$status"; fi
+            case "$status" in
+              live) break ;;
+              build_failed|update_failed|pre_deploy_failed|canceled|deactivated)
+                echo "::error::Render deploy $deploy_id ended with status $status"; exit 1 ;;
+            esac
+          done
+
+          # Free tier: the instance may still be starting (cold start).
+          for i in $(seq 1 18); do
+            code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "${BACKEND_ORIGIN%/}/api/health" || true)"
+            if [ "$code" = "200" ]; then echo "Backend health OK"; exit 0; fi
+            echo "Backend health HTTP ${code:-none}, retry $i/18"
+            sleep 10
+          done
+          echo "::error::Backend health check failed at ${BACKEND_ORIGIN%/}/api/health"
+          exit 1
+
+      - name: Deploy frontend (Cloudflare Worker)
+        timeout-minutes: 15
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npm ci --prefix frontend
+          npm run build --prefix frontend
+          cd frontend
+          npx wrangler deploy --var "BACKEND_ORIGIN:${BACKEND_ORIGIN%/}"
+
+      # Retries cover Worker propagation and Render cold start.
+      - name: Smoke checks
+        timeout-minutes: 10
+        run: |
+          base="${FRONTEND_URL%/}"
+          ok=""
+          for i in $(seq 1 12); do
+            # /api/health through the Worker proxy proves Worker + backend.
+            body="$(curl -fsS --max-time 30 "$base/api/health" || true)"
+            if printf '%s' "$body" | jq -e '.status == "ok"' > /dev/null 2>&1; then
+              ok=1; break
+            fi
+            echo "Proxied health not ready, retry $i/12"; sleep 10
+          done
+          [ -n "$ok" ] || { echo "::error::$base/api/health did not return status ok"; exit 1; }
+          echo "Proxied /api/health OK"
+
+          ok=""
+          for i in $(seq 1 6); do
+            # Deep link must return the SPA shell (assets SPA fallback).
+            body="$(curl -fsS --max-time 30 "$base/merchant/login" || true)"
+            if printf '%s' "$body" | grep -q 'id="root"'; then
+              ok=1; break
+            fi
+            echo "SPA deep link not ready, retry $i/6"; sleep 10
+          done
+          [ -n "$ok" ] || { echo "::error::$base/merchant/login did not return the SPA shell"; exit 1; }
+          echo "SPA deep link OK"
