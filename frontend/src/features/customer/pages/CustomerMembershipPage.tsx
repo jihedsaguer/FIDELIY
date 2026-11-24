@@ -3,6 +3,7 @@ import { useGetMembershipQuery, useGetAvailableRewardsQuery, useGetTransactionHi
 import { Button } from '../../../components/ui/Button';
 import { Section } from '../../../components/ui/Section';
 import { Card } from '../../../components/ui/Card';
+import { BusinessLogo } from '../../../components/ui/BusinessLogo';
 import { useI18n } from '../../../shared/i18n/i18n';
 import { paths } from '../../../app/routes/paths';
 import type { TransactionHistoryItem, RewardInfo } from '../../loyalty/api/customerApi';
@@ -223,19 +224,7 @@ export default function CustomerMembershipPage() {
           <Section title={t('businessInformation')}>
             <div className="flex items-center gap-4">
               {/* Business logo or initial */}
-              {business.logoUrl ? (
-                <img 
-                  src={business.logoUrl} 
-                  alt={business.name}
-                  className="w-16 h-16 object-cover rounded-[var(--radius-lg)] bg-[var(--subtle)]"
-                />
-              ) : (
-                <div className="w-16 h-16 rounded-[var(--radius-lg)] bg-[var(--glass-brand)] flex items-center justify-center flex-shrink-0">
-                  <span className="text-[var(--brand)] font-bold text-xl">
-                    {business.name.charAt(0)}
-                  </span>
-                </div>
-              )}
+              <BusinessLogo logoUrl={business.logoUrl} name={business.name} size="lg" />
               
               <div>
                 <h2 className="font-semibold text-[var(--text)] text-lg">{business.name}</h2>

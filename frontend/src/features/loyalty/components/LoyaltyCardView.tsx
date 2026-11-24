@@ -1,6 +1,7 @@
 import { useId, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, Gift, RotateCw } from 'lucide-react';
+import { BusinessLogo } from '../../../components/ui/BusinessLogo';
 import { cn } from '../../../lib/utils';
 import { useI18n } from '../../../shared/i18n/i18n';
 import type { LoyaltyProgramType, MembershipReward } from '../api/customerApi';
@@ -32,7 +33,7 @@ const HEADER_CLASS =
 /**
  * LoyaltyCardView - presentational credit-card style loyalty card.
  *
- * Front: logo or initial, business name (a link only when `detailsHref` is set),
+ * Front: logo (preset icon, image or initial; `BusinessLogo`), business name (a link only when `detailsHref` is set),
  * programme type, the current balance and progress toward the cheapest reward not
  * yet affordable (stamp slots up to 12, else a text count; a progress bar for
  * points), and a "Reward available" state. Back (tap the flip button): the
@@ -72,20 +73,7 @@ export function LoyaltyCardView({
 
   const headerContent: ReactNode = (
     <>
-      {logoUrl ? (
-        <img
-          src={logoUrl}
-          alt=""
-          className="h-11 w-11 shrink-0 rounded-[var(--radius-lg)] bg-white/20 object-cover"
-        />
-      ) : (
-        <span
-          aria-hidden="true"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-lg)] bg-white/20 text-lg font-bold"
-        >
-          {businessName.charAt(0)}
-        </span>
-      )}
+      <BusinessLogo logoUrl={logoUrl} name={businessName} size="sm" variant="translucent" />
       <span className="min-w-0">
         <span className="block truncate font-bold">{businessName}</span>
         {programmeLabel && (
