@@ -2,8 +2,11 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { useI18n } from '../../../shared/i18n/i18n';
 import { Button, Card, Section, FormFeedback, Input } from '../../../components/ui';
 import { useNavigate } from 'react-router-dom';
-import { useGetBusinessSetupQuery, useUpdateBusinessMutation, useUploadLogoMutation, useGetLogoQuery } from '@/features/business-onboarding/api/businessOnboardingApi';
-import { Building2, Mail, Phone, Globe, Image as ImageIcon } from 'lucide-react';
+import { useGetBusinessSetupQuery, useUpdateBusinessMutation } from '@/features/business-onboarding/api/businessOnboardingApi';
+import { Building2, Mail, Phone, Globe } from 'lucide-react';
+import { BusinessLogo } from '../../../components/ui/BusinessLogo';
+import { LogoPresetPicker } from '@/features/business-onboarding/logo/LogoPresetPicker';
+import { getLogoPreset, parseLogo } from '@/features/business-onboarding/logo/logoPresets';
 import type { UpdateBusinessRequest } from '@/features/business-onboarding/api/businessOnboardingApi';
 import type { BusinessSetup } from '@/features/business-onboarding/types/businessOnboarding.types';
 
@@ -14,23 +17,14 @@ export default function MerchantBusinessProfilePage() {
   // API hooks
   const setupQuery = useGetBusinessSetupQuery();
   const [updateBusiness, { isLoading: isUpdating }] = useUpdateBusinessMutation();
-  const [uploadLogo, { isLoading: isUploading }] = useUploadLogoMutation();
-  
-  // Logo query
-  const logoQuery = useGetLogoQuery(undefined, {
-    skip: !setupQuery.data?.business?.logoUrl,
-  });
-  
+
   const businessSetup = setupQuery.data as BusinessSetup | undefined;
   const business = businessSetup?.business;
   
   // State for edit mode
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<UpdateBusinessRequest>({});
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [logoObjectUrl, setLogoObjectUrl] = useState<string | null>(null);
-  
+
   // Error and success states
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -38,27 +32,7 @@ export default function MerchantBusinessProfilePage() {
   // Loading state
   const isLoading = setupQuery.isLoading || setupQuery.isFetching;
   const hasError = setupQuery.isError;
-  const logoQueryError = logoQuery.error;
-  
-  // Cleanup object URLs to prevent memory leaks
-  useEffect(() => {
-    return () => {
-      if (logoObjectUrl) {
-        URL.revokeObjectURL(logoObjectUrl);
-      }
-    };
-  }, [logoObjectUrl]);
-  
-  // Update logo object URL when query data changes
-  useEffect(() => {
-    if (logoQuery.data) {
-      const url = URL.createObjectURL(logoQuery.data);
-      setLogoObjectUrl(url);
-      return () => URL.revokeObjectURL(url);
-    }
-    setLogoObjectUrl(null);
-  }, [logoQuery.data]);
-  
+
   // Initialize edit data when business data loads
   useEffect(() => {
     if (business) {
@@ -78,35 +52,6 @@ export default function MerchantBusinessProfilePage() {
     }
   }, [business]);
   
-  // Handle logo file selection
-  const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setError(t('logoMustBeImage'));
-      return;
-    }
-    
-    // Validate file size (5MB limit)
-    const MAX_FILE_SIZE = 5 * 1024 * 1024;
-    if (file.size > MAX_FILE_SIZE) {
-      setError(t('logoTooLarge'));
-      return;
-    }
-    
-    setLogoFile(file);
-    setError(null);
-    
-    // Create preview using FileReader (doesn't need cleanup)
-    const reader = new FileReader();
-    reader.onload = () => {
-      setLogoPreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-  
   // Handle input change
   const handleInputChange = <K extends keyof UpdateBusinessRequest>(
     key: K,
@@ -122,15 +67,9 @@ export default function MerchantBusinessProfilePage() {
     setSuccess(null);
     
     try {
-      // Upload logo if file selected
-      let logoUrl = editData.logoUrl;
-      if (logoFile) {
-        const formData = new FormData();
-        formData.append('file', logoFile);
-        const uploadResult = await uploadLogo(formData).unwrap();
-        logoUrl = uploadResult.storageKey;
-      }
-      
+      // `preset:<id>` or the existing http(s) URL, sent as is.
+      const logoUrl = editData.logoUrl;
+
       // Prepare update payload
       const updatePayload: UpdateBusinessRequest = {
         name: editData.name,
@@ -169,9 +108,7 @@ export default function MerchantBusinessProfilePage() {
       }
       
       setIsEditing(false);
-      setLogoFile(null);
-      setLogoPreview(null);
-      
+
       // Refetch business data
       setupQuery.refetch();
     } catch (err) {
@@ -183,8 +120,6 @@ export default function MerchantBusinessProfilePage() {
   // Handle cancel
   const handleCancel = () => {
     setIsEditing(false);
-    setLogoFile(null);
-    setLogoPreview(null);
     setError(null);
     setSuccess(null);
     if (business) {
@@ -247,6 +182,11 @@ export default function MerchantBusinessProfilePage() {
     );
   }
 
+  const logo = parseLogo(business.logoUrl);
+  const logoName = logo.kind === 'preset'
+    ? t(getLogoPreset(logo.id).labelKey)
+    : logo.kind === 'image' ? t('logoCurrent') : t('noLogoUploaded');
+
   return (
     <div className="flex-1 bg-[var(--background)] p-4 md:p-8">
       <div className="mx-auto max-w-screen-md w-full">
@@ -272,54 +212,21 @@ export default function MerchantBusinessProfilePage() {
           <Card className="p-6">
           {isEditing ? (
             <form className="space-y-6" onSubmit={handleSubmit}>
-              {/* Logo Upload */}
-              <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-                <div className="flex-shrink-0 h-20 w-20 rounded-lg bg-[var(--subtle)] border-2 border-[var(--border)] flex items-center justify-center overflow-hidden">
-                  {logoPreview ? (
-                    <img
-                      src={logoPreview}
-                      alt="Business logo preview"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : logoObjectUrl ? (
-                    <img
-                      src={logoObjectUrl}
-                      alt="Business logo"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : business.logoUrl ? (
-                    <img
-                      src={business.logoUrl}
-                      alt="Business logo"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <ImageIcon className="h-8 w-8 text-[var(--text-muted)]" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-[var(--text)] mb-2">
-                    {t('businessLogo')}
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoChange}
-                    className="text-sm"
-                    disabled={isUpdating || isUploading}
-                  />
-                  <p className="text-[var(--text-muted)] text-xs mt-1">
-                    {t('logoUploadHint')}
-                  </p>
-                </div>
-              </div>
+              {/* Logo: presets (file upload hidden until real storage exists) */}
+              <LogoPresetPicker
+                value={editData.logoUrl ?? ''}
+                onChange={(value) => handleInputChange('logoUrl', value)}
+                businessName={editData.name || business.name}
+                color={editData.theme?.primaryColor || business.theme?.primaryColor}
+                disabled={isUpdating}
+              />
 
               {/* Business Name */}
               <Input
                 label={t('businessName')}
                 value={editData.name || ''}
                 onChange={(e) => handleInputChange('name', e.target.value)}
-                disabled={isUpdating || isUploading}
+                disabled={isUpdating}
                 required
               />
 
@@ -331,7 +238,7 @@ export default function MerchantBusinessProfilePage() {
                 <textarea
                   value={editData.description || ''}
                   onChange={(e) => handleInputChange('description', e.target.value)}
-                  disabled={isUpdating || isUploading}
+                  disabled={isUpdating}
                   className="w-full p-3 rounded-[var(--radius-lg)] bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] min-h-[100px]"
                 />
               </div>
@@ -342,7 +249,7 @@ export default function MerchantBusinessProfilePage() {
                 type="tel"
                 value={editData.businessPhone || ''}
                 onChange={(e) => handleInputChange('businessPhone', e.target.value)}
-                disabled={isUpdating || isUploading}
+                disabled={isUpdating}
               />
 
               {/* Phone Visibility */}
@@ -356,7 +263,7 @@ export default function MerchantBusinessProfilePage() {
                       type="radio"
                       checked={editData.phonePubliclyDisplayed === true}
                       onChange={() => handleInputChange('phonePubliclyDisplayed', true)}
-                      disabled={isUpdating || isUploading}
+                      disabled={isUpdating}
                     />
                     <span className="text-sm">{t('phonePubliclyDisplayed')}</span>
                   </label>
@@ -365,7 +272,7 @@ export default function MerchantBusinessProfilePage() {
                       type="radio"
                       checked={editData.phonePubliclyDisplayed === false}
                       onChange={() => handleInputChange('phonePubliclyDisplayed', false)}
-                      disabled={isUpdating || isUploading}
+                      disabled={isUpdating}
                     />
                     <span className="text-sm">{t('phoneKeptPrivate')}</span>
                   </label>
@@ -377,13 +284,13 @@ export default function MerchantBusinessProfilePage() {
                   type="button"
                   variant="outline"
                   onClick={handleCancel}
-                  disabled={isUpdating || isUploading}
+                  disabled={isUpdating}
                 >
                   {t('cancel')}
                 </Button>
                 <Button
                   type="submit"
-                  isLoading={isUpdating || isUploading}
+                  isLoading={isUpdating}
                 >
                   {t('save')}
                 </Button>
@@ -393,32 +300,16 @@ export default function MerchantBusinessProfilePage() {
             <div className="space-y-6">
               {/* Logo Display */}
               <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-                <div className="flex-shrink-0 h-20 w-20 rounded-lg bg-[var(--subtle)] border-2 border-[var(--border)] flex items-center justify-center overflow-hidden">
-                  {logoObjectUrl ? (
-                    <img
-                      src={logoObjectUrl}
-                      alt="Business logo"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : business.logoUrl ? (
-                    <img
-                      src={business.logoUrl}
-                      alt="Business logo"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Building2 className="h-8 w-8 text-[var(--text-muted)]" />
-                  )}
-                </div>
+                <BusinessLogo
+                  logoUrl={business.logoUrl}
+                  name={business.name}
+                  color={business.theme?.primaryColor}
+                  size="xl"
+                  className="border-2 border-[var(--border)]"
+                />
                 <div className="flex-1">
                   <h3 className="text-[var(--text)] font-medium">{t('businessLogo')}</h3>
-                  {logoQueryError ? (
-                    <p className="text-[var(--danger)] text-sm">{t('failedToLoad')}</p>
-                  ) : (
-                    <p className="text-[var(--text-muted)] text-sm">
-                      {business.logoUrl ? t('logoUploaded') : t('noLogoUploaded')}
-                    </p>
-                  )}
+                  <p className="text-[var(--text-muted)] text-sm">{logoName}</p>
                 </div>
               </div>
 

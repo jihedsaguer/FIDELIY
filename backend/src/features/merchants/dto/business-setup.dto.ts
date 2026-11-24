@@ -4,12 +4,24 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUrl,
   Matches,
   MaxLength,
+  ValidateBy,
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
+import { isLogoValue } from '../logo-presets';
+
+/** An http(s) URL (same rules as `@IsUrl` before) or `preset:<id>` from `LOGO_PRESET_IDS`. */
+function IsLogoValue() {
+  return ValidateBy({
+    name: 'isLogoValue',
+    validator: {
+      validate: (value: unknown) => isLogoValue(value),
+      defaultMessage: () => 'logoUrl must be an http(s) URL or a known logo preset (preset:<id>)',
+    },
+  });
+}
 
 export class BusinessThemeDto {
   @IsString()
@@ -52,7 +64,8 @@ export class UpdateBusinessSetupDto {
   phonePubliclyDisplayed?: boolean;
 
   @ValidateIf((_object, value) => value !== undefined && value !== null)
-  @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
+  @IsString()
+  @IsLogoValue()
   @MaxLength(2048)
   logoUrl?: string | null;
 

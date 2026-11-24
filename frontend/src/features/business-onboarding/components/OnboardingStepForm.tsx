@@ -1,5 +1,10 @@
 import type { FormEvent } from 'react';
+import { BusinessLogo } from '../../../components/ui/BusinessLogo';
 import { SubmitButton } from '../../../components/ui/SubmitButton';
+import { useI18n } from '../../../shared/i18n/i18n';
+import { LogoPresetPicker } from '../logo/LogoPresetPicker';
+import { getLogoPreset, parseLogo } from '../logo/logoPresets';
+import { ThemeSwatchPicker } from '../logo/ThemeSwatchPicker';
 import type { OnboardingFields } from '../types/businessOnboarding.types';
 
 interface OnboardingStepFormProps {
@@ -17,15 +22,17 @@ export function OnboardingStepForm({
   onChange,
   onSubmit,
 }: OnboardingStepFormProps) {
+  const { t } = useI18n();
+
   if (step === 0) {
     return (
       <form className="form-stack onboarding-form" onSubmit={onSubmit} noValidate>
         <div className="step-intro"><h2>Tell us about your business</h2><p>This is the name and logo customers will recognize. You do not need to enter your personal name or registration email again.</p></div>
         <label htmlFor="business-name">Business name</label>
         <input id="business-name" autoComplete="organization" maxLength={255} value={fields.businessName} onChange={(event) => onChange('businessName', event.target.value)} required disabled={pending} />
-        <label htmlFor="business-logo">Logo URL</label>
-        <input id="business-logo" type="url" inputMode="url" maxLength={2048} placeholder="https://example.com/logo.png" value={fields.logoUrl} onChange={(event) => onChange('logoUrl', event.target.value)} required disabled={pending} />
-        <p className="field-hint">Use a publicly accessible HTTP or HTTPS image URL. Logo upload is not available in this setup flow.</p>
+        <div className="mt-2">
+          <LogoPresetPicker value={fields.logoUrl} onChange={(value) => onChange('logoUrl', value)} businessName={fields.businessName} color={fields.primaryColor} disabled={pending} />
+        </div>
         <SubmitButton pending={pending} idle="Save and continue" waiting="Saving business…" />
       </form>
     );
@@ -33,10 +40,15 @@ export function OnboardingStepForm({
 
   if (step === 1) {
     const displayName = fields.businessName.trim() || 'Your business';
-    const logo = fields.logoUrl.trim();
     return (
       <form className="form-stack onboarding-form" onSubmit={onSubmit} noValidate>
         <div className="step-intro"><h2>Choose your business colors</h2><p>Select two colors for your brand. You can refine these choices later.</p></div>
+        <ThemeSwatchPicker
+          primaryColor={fields.primaryColor}
+          accentColor={fields.accentColor}
+          onSelect={(colors) => { onChange('primaryColor', colors.primaryColor); onChange('accentColor', colors.accentColor); }}
+          disabled={pending}
+        />
         <div className="color-fields">
           <div className="color-field">
             <label htmlFor="primary-color">Primary color</label>
@@ -50,9 +62,7 @@ export function OnboardingStepForm({
           </div>
         </div>
         <div className="business-preview" style={{ borderColor: fields.primaryColor }}>
-          {logo
-            ? <img src={logo} alt={`${displayName} logo preview`} />
-            : <span className="logo-placeholder" style={{ backgroundColor: fields.primaryColor }}>{displayName.slice(0, 1).toUpperCase()}</span>}
+          <BusinessLogo logoUrl={fields.logoUrl} name={displayName} color={fields.primaryColor} size="md" />
           <div><strong>{displayName}</strong><span>Business identity preview</span></div>
           <span className="preview-accent" style={{ backgroundColor: fields.accentColor }} aria-label="Secondary color preview" />
         </div>
@@ -91,12 +101,16 @@ export function OnboardingStepForm({
     );
   }
 
+  const logo = parseLogo(fields.logoUrl);
+  const logoName = logo.kind === 'preset'
+    ? t(getLogoPreset(logo.id).labelKey)
+    : logo.kind === 'image' ? t('logoCurrent') : '';
   return (
     <form className="form-stack onboarding-form" onSubmit={onSubmit} noValidate>
       <div className="step-intro"><h2>Review your business setup</h2><p>Check the details below. You can go back to any step before finishing.</p></div>
       <dl className="review-card">
         <ReviewItem label="Business" value={fields.businessName} />
-        <ReviewItem label="Logo URL" value={fields.logoUrl} />
+        <ReviewItem label="Logo" value={logoName} />
         <ReviewItem label="Brand colors" value={`${fields.primaryColor} · ${fields.accentColor}`} />
         <ReviewItem label="Business phone" value={fields.businessPhone} />
         <ReviewItem label="Phone visibility" value={fields.phonePubliclyDisplayed ? 'Displayed publicly' : 'Kept private'} />

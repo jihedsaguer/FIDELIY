@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { FormFeedback } from '../../../components/ui/FormFeedback';
 import { Section } from '../../../components/ui/Section';
 import { InputField } from '../../../components/ui/InputField';
+import { BusinessLogo } from '../../../components/ui/BusinessLogo';
 import { paths } from '../../../app/routes/paths';
 import {
   useDiscoverBusinessQuery,
@@ -37,13 +38,13 @@ function BusinessCard({ business, program }: PublicBusinessDiscoveryResponse) {
       '--theme-primary': themePrimary,
       '--theme-accent': themeAccent,
     } as React.CSSProperties}>
-      {business.logoUrl && (
-        <img 
-          src={business.logoUrl} 
-          alt={`${business.name} logo`} 
-          className="qr-business-logo"
-        />
-      )}
+      <BusinessLogo
+        logoUrl={business.logoUrl}
+        name={business.name}
+        color={business.theme.primaryColor}
+        size="lg"
+        className="qr-business-logo"
+      />
       <h2 className="qr-business-name">{business.name}</h2>
       {business.description && (
         <p className="qr-business-description">{business.description}</p>

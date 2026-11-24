@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { I18nProvider } from '../../../shared/i18n/i18n';
@@ -47,6 +47,22 @@ describe('LoyaltyCardView', () => {
 
   it('shows the business initial when there is no logo', () => {
     renderView();
+    expect(screen.getByText('C')).toBeInTheDocument();
+  });
+
+  it('shows a preset logo icon on the translucent tile instead of the initial', () => {
+    const { container } = renderView({ logoUrl: 'preset:coffee' });
+    expect(screen.queryByText('C')).not.toBeInTheDocument();
+    const tile = container.querySelector('span.bg-white\\/20[aria-hidden="true"]');
+    expect(tile?.querySelector('svg')).not.toBeNull();
+  });
+
+  it('shows an image logo and falls back to the initial when it fails', () => {
+    const { container } = renderView({ logoUrl: 'https://example.com/logo.png' });
+    const image = container.querySelector('img');
+    expect(image).toHaveAttribute('src', 'https://example.com/logo.png');
+    expect(image).toHaveAttribute('alt', '');
+    fireEvent.error(image!);
     expect(screen.getByText('C')).toBeInTheDocument();
   });
 });

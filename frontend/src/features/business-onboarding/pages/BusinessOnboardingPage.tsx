@@ -12,6 +12,7 @@ import {
   useUpdateFirstBranchMutation,
 } from '../api/businessOnboardingApi';
 import { OnboardingStepForm } from '../components/OnboardingStepForm';
+import { isValidLogoValue, presetLogoValue } from '../logo/logoPresets';
 import type {
   BusinessSetup,
   OnboardingFields,
@@ -27,7 +28,7 @@ const STEPS = [
 
 const DEFAULT_FIELDS: OnboardingFields = {
   businessName: '',
-  logoUrl: '',
+  logoUrl: presetLogoValue('initial'),
   primaryColor: '#2F7450',
   accentColor: '#F0B35A',
   businessPhone: '',
@@ -40,15 +41,6 @@ function isHexColor(value: string) {
   return /^#[0-9A-Fa-f]{6}$/.test(value);
 }
 
-function isHttpUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return url.protocol === 'http:' || url.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
 function fieldsFromSetup(setup: BusinessSetup): OnboardingFields {
   const business = setup.business;
   const firstBranch = setup.branches[0];
@@ -56,7 +48,7 @@ function fieldsFromSetup(setup: BusinessSetup): OnboardingFields {
   const accentColor = business?.theme?.accentColor;
   return {
     businessName: business?.name ?? '',
-    logoUrl: business?.logoUrl ?? '',
+    logoUrl: business?.logoUrl && isValidLogoValue(business.logoUrl) ? business.logoUrl : DEFAULT_FIELDS.logoUrl,
     primaryColor: primaryColor && isHexColor(primaryColor) ? primaryColor : DEFAULT_FIELDS.primaryColor,
     accentColor: accentColor && isHexColor(accentColor) ? accentColor : DEFAULT_FIELDS.accentColor,
     businessPhone: business?.businessPhone ?? '',
@@ -69,7 +61,7 @@ function fieldsFromSetup(setup: BusinessSetup): OnboardingFields {
 }
 
 function resumeStep(setup: BusinessSetup, fields: OnboardingFields) {
-  if (!setup.business || !fields.businessName.trim() || !isHttpUrl(fields.logoUrl)) return 0;
+  if (!setup.business || !fields.businessName.trim() || !isValidLogoValue(setup.business.logoUrl ?? '')) return 0;
   const savedTheme = setup.business.theme;
   if (!isHexColor(savedTheme?.primaryColor ?? '') || !isHexColor(savedTheme?.accentColor ?? '')) return 1;
   if (!fields.businessPhone.trim() || fields.phonePubliclyDisplayed === null) return 2;
@@ -80,7 +72,7 @@ function resumeStep(setup: BusinessSetup, fields: OnboardingFields) {
 function missingFields(fields: OnboardingFields) {
   const missing: string[] = [];
   if (!fields.businessName.trim()) missing.push('Business name');
-  if (!isHttpUrl(fields.logoUrl)) missing.push('A valid logo URL');
+  if (!isValidLogoValue(fields.logoUrl)) missing.push('A logo');
   if (!isHexColor(fields.primaryColor)) missing.push('A valid primary color');
   if (!isHexColor(fields.accentColor)) missing.push('A valid secondary color');
   if (!fields.businessPhone.trim()) missing.push('Business phone number');
@@ -132,10 +124,7 @@ export default function BusinessOnboardingPage() {
     if (step === 0) {
       if (!fields.businessName.trim()) return 'Enter your business name.';
       if (fields.businessName.trim().length > 255) return 'Business name must be 255 characters or fewer.';
-      if (!fields.logoUrl.trim() || !isHttpUrl(fields.logoUrl.trim())) {
-        return 'Enter a valid logo URL beginning with https:// or http://.';
-      }
-      if (fields.logoUrl.trim().length > 2048) return 'Logo URL must be 2048 characters or fewer.';
+      if (!isValidLogoValue(fields.logoUrl)) return 'Choose a logo for your business.';
     }
     if (step === 1 && (!isHexColor(fields.primaryColor) || !isHexColor(fields.accentColor))) {
       return 'Choose valid six-digit hex colors for both brand colors.';
@@ -171,7 +160,7 @@ export default function BusinessOnboardingPage() {
         if (!setup?.business) await createBusiness({ name: fields.businessName.trim() }).unwrap();
         await updateBusiness({
           name: fields.businessName.trim(),
-          logoUrl: fields.logoUrl.trim(),
+          logoUrl: fields.logoUrl,
         }).unwrap();
       } else if (step === 1) {
         await updateBusiness({

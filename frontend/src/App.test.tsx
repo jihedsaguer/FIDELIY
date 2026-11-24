@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AppProviders } from './app/providers';
 import AppRoutes from './app/routes';
@@ -122,9 +122,10 @@ describe('application routes and guards', () => {
     const backend = renderRoute('/merchant/onboarding', createMockBackend({ authenticated: true }));
     await screen.findByText('Tell us about your business');
     fireEvent.change(screen.getByLabelText('Business name'), { target: { value: 'Cafe FIDELIY' } });
-    fireEvent.change(screen.getByLabelText('Logo URL'), { target: { value: 'https://example.com/logo.png' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Café' }));
     fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
     await screen.findByText('Choose your business colors');
+    expect(backend.getSetup().business?.logoUrl).toBe('preset:coffee');
     fireEvent.change(screen.getByLabelText('Primary color'), { target: { value: '#12ab34' } });
     fireEvent.change(screen.getByLabelText('Secondary color'), { target: { value: '#a1b2c3' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
@@ -148,15 +149,37 @@ describe('application routes and guards', () => {
     expect(backend.calls.filter((call) => call.path.includes('/business-setup/')).length).toBeGreaterThanOrEqual(5);
   });
 
-  it('validates logo URLs before creating a business and updates an existing first branch', async () => {
-    const requiredBackend = renderRoute('/merchant/onboarding', createMockBackend({ authenticated: true }));
+  it('saves the default initial preset when no logo is chosen', async () => {
+    const backend = renderRoute('/merchant/onboarding', createMockBackend({ authenticated: true }));
     await screen.findByText('Tell us about your business');
+    expect(screen.queryByLabelText('Logo URL')).toBeNull();
+    expect(screen.getByRole('radio', { name: 'Initiale' })).toBeChecked();
     fireEvent.change(screen.getByLabelText('Business name'), { target: { value: 'Cafe FIDELIY' } });
-    fireEvent.change(screen.getByLabelText('Logo URL'), { target: { value: 'not-a-url' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('valid logo URL');
-    expect(requiredBackend.calls.some((call) => call.method === 'POST' && call.path.endsWith('/business'))).toBe(false);
-    cleanup();
+    await screen.findByText('Choose your business colors');
+    const patch = backend.calls.find((call) => call.method === 'PATCH' && call.path.endsWith('/business'));
+    expect(patch?.body).toEqual({ name: 'Cafe FIDELIY', logoUrl: 'preset:initial' });
+    fireEvent.click(screen.getByRole('radio', { name: 'Bleu nuit' }));
+    expect(screen.getByLabelText('Primary color')).toHaveValue('#1e3a8a');
+    expect(screen.getByLabelText('Secondary color')).toHaveValue('#f59e0b');
+  });
+
+  it('keeps an existing URL logo through onboarding', async () => {
+    const backend = renderRoute('/merchant/onboarding', createMockBackend({ authenticated: true, setup: createPopulatedSetup() }));
+    await screen.findByText('Add your first branch');
+    fireEvent.click(screen.getByRole('button', { name: '← Previous' }));
+    fireEvent.click(screen.getByRole('button', { name: '← Previous' }));
+    fireEvent.click(screen.getByRole('button', { name: '← Previous' }));
+    await screen.findByText('Tell us about your business');
+    expect(screen.getByRole('radio', { name: 'Logo actuel' })).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+    await screen.findByText('Choose your business colors');
+    const patch = backend.calls.find((call) => call.method === 'PATCH' && call.path.endsWith('/business'));
+    expect(patch?.body).toMatchObject({ logoUrl: 'https://example.com/logo.png' });
+    expect(backend.getSetup().business?.logoUrl).toBe('https://example.com/logo.png');
+  });
+
+  it('updates an existing first branch', async () => {
 
     const setup = createPopulatedSetup();
     setup.branches = [{
@@ -187,9 +210,10 @@ describe('application routes and guards', () => {
     renderRoute('/merchant/onboarding', backend);
     await screen.findByText('Tell us about your business');
     fireEvent.change(screen.getByLabelText('Business name'), { target: { value: 'Cafe FIDELIY' } });
-    fireEvent.change(screen.getByLabelText('Logo URL'), { target: { value: 'https://example.com/logo.png' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Boulangerie' }));
     fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Network unavailable');
+    expect(screen.getByRole('radio', { name: 'Boulangerie' })).toBeChecked();
     expect(screen.getByLabelText('Business name')).toHaveValue('Cafe FIDELIY');
     fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
     expect(await screen.findByText('Choose your business colors')).toBeInTheDocument();
@@ -210,6 +234,8 @@ describe('application routes and guards', () => {
     setup.business!.branchCount = 1;
     const backend = renderRoute('/merchant/onboarding', createMockBackend({ authenticated: true, setup }));
     expect(await screen.findByText('Review your business setup')).toBeInTheDocument();
+    expect(screen.getByText('Logo actuel')).toBeInTheDocument();
+    expect(screen.queryByText('https://example.com/logo.png')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Complete business setup' }));
     expect(await screen.findByText('Setup complete. Opening your merchant dashboard…')).toBeInTheDocument();
     expect(backend.getSetup().status).toBe('complete');
