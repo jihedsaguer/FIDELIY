@@ -1,16 +1,55 @@
-# FIDELIY: Digital Loyalty Platform
+<div align="center">
 
-A loyalty and rewards platform for Tunisian SMBs: merchants create stamp and points programmes, customers carry one personal QR across businesses, and merchants scan it to award loyalty. Cash-based; no billing in Release 1.
+# FIDELIY
 
-## Status
+**A digital loyalty platform that replaces the cardboard stamp card, built for small businesses in Tunisia.**
 
-Release 1 is in progress. Current state, verified facts and the next task are in `docs/IMPLEMENTATION_STATUS.md`; releases and backlog are in `docs/ROADMAP.md`.
+[**Live demo**](https://fideliy.jihedsaguer127.workers.dev) · [Architecture](docs/ARCHITECTURE.md) · [Decisions](docs/DECISIONS.md) · [Roadmap](docs/ROADMAP.md)
 
-## What it does
+![React](https://img.shields.io/badge/React_19-20232a?logo=react) ![TypeScript](https://img.shields.io/badge/TypeScript-3178c6?logo=typescript&logoColor=white) ![Tailwind](https://img.shields.io/badge/Tailwind_4-0f766e?logo=tailwindcss&logoColor=white) ![NestJS](https://img.shields.io/badge/NestJS-e0234e?logo=nestjs&logoColor=white) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?logo=postgresql&logoColor=white) ![Cloudflare](https://img.shields.io/badge/Cloudflare_Workers-f38020?logo=cloudflare&logoColor=white)
 
-- **Customers:** join loyalty programmes with their phone number (a unique identifier, not OTP-verified in Release 1), keep a personal QR, and view balances, rewards and history.
-- **Merchants:** set up a business, branches and programmes, scan customer QR codes to award stamps or points, and redeem rewards.
-- **Admins:** platform oversight (basic, Release 1).
+<img src="docs/screenshots/landing-desktop.png" alt="FIDELIY landing page: a live stamp-card preview and a personal customer QR" width="860">
+
+</div>
+
+## The problem
+
+Corner cafés, barbers and bakeries in Tunisia run loyalty on paper stamp cards: they get lost, forged and forgotten, and the owner learns nothing about their regulars. Existing apps assume card payments, app-store installs and OTP/SMS budgets that most small shops don't have.
+
+## The solution
+
+FIDELIY is a **PWA, with nothing to install**. A customer registers once with a phone number and gets **one personal QR that works across every business**. The merchant scans it at the counter to award stamps or points and to redeem rewards. Payment stays cash-based, with no billing in Release 1.
+
+## Features
+
+| For customers | For merchants |
+|---|---|
+| Join a business by scanning its public QR | Create a business, branches and loyalty programmes (stamps, points or both) |
+| One personal QR across all businesses | Scan a customer QR (camera, with manual-entry fallback) to award loyalty |
+| Balances, rewards and history in one place | Redeem rewards, correct mistakes, see customers |
+| Phone-number sign-in | Email and password sign-in, logo presets and colour themes |
+| French and Arabic (RTL) interface | Public business QR for customers to join |
+
+## Engineering highlights
+
+- **Modular NestJS monolith** with Drizzle ORM and forward-only SQL migrations on PostgreSQL.
+- **Multi-tenancy with Row-Level Security** designed into the schema (hardening tracked in [`docs/DATABASE.md`](docs/DATABASE.md)).
+- **Signed customer QR codes** (server-side secret), so codes can't be forged.
+- **Better Auth** with two identity models: phone for customers, email and password for merchants.
+- **First-party auth cookies in production**: a Cloudflare Worker serves the SPA and proxies `/api/*` to the backend.
+- **Automated CI/CD** on GitHub Actions: CI, then Neon migrations, Render deploy, `wrangler deploy` and smoke checks.
+- **Documented decision log** ([`docs/DECISIONS.md`](docs/DECISIONS.md)) and tests at unit, component and DB-integration level (Jest, Vitest).
+
+```mermaid
+flowchart LR
+  B[Browser PWA<br/>React 19 + RTK Query] --> W[Cloudflare Worker<br/>SPA + /api proxy + keep-alive cron]
+  W --> R[NestJS API<br/>Render]
+  R --> N[(PostgreSQL 18<br/>Neon)]
+  GH[GitHub Actions] -.deploys.-> W
+  GH -.migrates and deploys.-> R
+```
+
+> **Status:** Release 1 is in progress and runs as a smoke/pilot deployment on free tiers. The first request after idle can take a few seconds. Current state: [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md).
 
 ## Technology stack
 
